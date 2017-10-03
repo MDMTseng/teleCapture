@@ -36,15 +36,15 @@ void setup() {
 
   
   setup_6050();
-
-  for(i=0;i<7*1000/20;i++)
+  setup_HCSR04();
+  /*for(i=0;i<7*1000/20;i++)
   {
     
     driveMotor(13,0);
     driveMotor(12,0);
     delay(19);
-  }
-
+  }*/
+  delay(5000);
   //while(1);
 }
 
@@ -67,10 +67,28 @@ float controller(const OriFus_EulerAngle *euler_sys_Angle,const OriFus_EulerAngl
   return Pout+Dout+Iout;
 }
 
+
+
+
+#define HCSR04_MAX 500
 unsigned long preLoop = 0;
 void loop() {
-  read_6050();
-  
+  Quaternion q;
+  int distIdx=0;
+  while(1)
+  {
+    int tmp = read_HCSR04();
+    if(tmp!=HCSR04_MAX)distIdx=tmp;
+    while(1)
+    {
+      Quaternion *ret_q=read_6050(&q);
+      if(ret_q)
+      {
+        break;
+      }
+    }
+    GetNewIMUData(&q,distIdx);
+  }
 }
 
 unsigned long XX=0;
@@ -79,7 +97,7 @@ const float RAD2DEG=180.0 / M_PI;
 
 OriFus_EulerAngle control_Angle={25,0,0};
 //volatile uint16_t dfdf[3000];
-void GetNewIMUData(Quaternion *q)
+void GetNewIMUData(Quaternion *q,int distIdx)
 {
       //Serial.print(1/period);Serial.print(" ");
       
@@ -104,11 +122,12 @@ void GetNewIMUData(Quaternion *q)
         euler_sys_Angle.pitch=ypr[1] * 180/M_PI;
         euler_sys_Angle.roll =ypr[2] * 180/M_PI;
         //Serial.print(1/period);Serial.print(" ");
-        int offset = sprintf(BUF,"[%4d.%03d, %5d, %5d,%5d],",
+        int offset = sprintf(BUF,"[%4d.%03d, %5d, %5d,%5d,%04d],",
         (int)(nowLoop/1000),(int)(nowLoop%1000),
         (int)(euler_sys_Angle.roll*10),
         (int)(euler_sys_Angle.yaw*10),
-        (int)(euler_sys_Angle.pitch*10));
+        (int)(euler_sys_Angle.pitch*10),
+        (int)distIdx);
 
         Serial.println(BUF);
         /*Serial.print((float)CC);Serial.print(" ");
@@ -120,12 +139,13 @@ void GetNewIMUData(Quaternion *q)
       else
       {
         
-        int offset = sprintf(BUF,"[%4d.%03d, %5d, %5d,%5d,%5d],",
+        int offset = sprintf(BUF,"[%4d.%03d, %5d, %5d,%5d, %5d,%04d],",
         (int)(nowLoop/1000),(int)(nowLoop%1000),
         (int)(q->w*1000),
         (int)(q->x*1000),
         (int)(q->y*1000),
-        (int)(q->z*1000));
+        (int)(q->z*1000),
+        (int)distIdx);
 
         Serial.println(BUF);
       }
@@ -133,10 +153,10 @@ void GetNewIMUData(Quaternion *q)
 }
 
 
-void read_6050() {
+Quaternion * read_6050(Quaternion *q_dat) {
     uint8_t fifoBuffer[64]; // FIFO storage buffer
     // if programming failed, don't try to do anything
-    if (!dmpReady) return;
+    if (!dmpReady) return NULL;
 
 
     // reset interrupt flag and get INT_STATUS byte
@@ -166,10 +186,12 @@ void read_6050() {
       }*/
 
       
-      Quaternion q;           // [w, x, y, z]         quaternion container
-      mpu.dmpGetQuaternion(&q, fifoBuffer);
-      GetNewIMUData(&q);
+      //Quaternion q;           // [w, x, y, z]         quaternion container
+      mpu.dmpGetQuaternion(q_dat, fifoBuffer);
+      
+      return q_dat;
   }
+  return NULL;
 }
 
 
@@ -225,5 +247,37 @@ void setup_6050() {
         Serial.print(devStatus);
         Serial.println(F(")"));
     }
+}
+
+
+#define echoPin 7 // Echo Pin
+#define trigPin 6 // Trigger Pin
+void setup_HCSR04()
+{
+  Serial.println("Setting up HCSR04...");
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  digitalWrite(trigPin, LOW);
+}
+int read_HCSR04()
+{
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(2); 
+  digitalWrite(trigPin, LOW);
+  
+  int pulse_width=0;
+  while ( digitalRead(echoPin) == 0 )
+  {
+    if(pulse_width++>100)
+    {
+      return -1;  
+    }
+  }
+  pulse_width=0;
+  while ( digitalRead(echoPin) == 1 && !(pulse_width==HCSR04_MAX))pulse_width++;
+  //Serial.println(pulse_width);
+
+  return pulse_width;
+  //delay(50);
 }
 
