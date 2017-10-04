@@ -1974,6 +1974,7 @@ globalViewQua=
 [  26.909,  -984,    11,  118,  -128,0497],
 [  26.919,  -984,    12,  118,  -128,0497]
 ]
+g_curIdx=0;
 /*!
  * jQuery lightweight plugin boilerplate
  * Original author: @ajpiano
@@ -2580,7 +2581,7 @@ globalViewQua=
 
             this.render();
         },
-        aaa: function(quaArr){
+        Arr2Quat: function(quaArr){
 
           var W=quaArr[1]/1000;
           var X=quaArr[2]/1000;
@@ -2593,12 +2594,29 @@ globalViewQua=
           sensor_quaternion.w = W;
           return sensor_quaternion;
         },
+        QuatArrSeeking: function(Arr,start_idx,time_stamp){
+          if(start_idx>=Arr.length)return 0;
+          console.log(start_idx);
+          if(Arr[start_idx][0]>time_stamp)
+          {
+            return 0;
+          }
+
+          for (i = start_idx+1; i < Arr.length; i++) {
+              if(Arr[i][0]>time_stamp)
+              {
+                return i-1;
+              }
+          }
+          return 0;
+        },
         render: function() {
           if (typeof this._video != 'undefined')
           {
-
+            //this.curIdx=0;
             //console.log(">",this._video.currentTime);
-            var currentIdx = Math.floor(this._video.currentTime*100.0 );
+            var currentIdx = this.QuatArrSeeking(globalViewQua,g_curIdx,this._video.currentTime+10.9);
+            g_curIdx = currentIdx;
             currentIdx%=globalViewQua.length;
             progress=this._video.currentTime/this._video.duration;
             /*this._lat=90*progress;
@@ -2613,9 +2631,10 @@ globalViewQua=
             }
             else
             {
+
               this._camera.useQuaternions = true;
-              sensor_quaternion_init=this.aaa(globalViewQua[0]);
-              sensor_quaternion=this.aaa(globalViewQua[currentIdx]);
+              sensor_quaternion_init=this.Arr2Quat(globalViewQua[600]);
+              sensor_quaternion=this.Arr2Quat(globalViewQua[currentIdx]);
 
               var m = new THREE.Matrix4();
               m.makeRotationX ( -1.6);
@@ -2638,17 +2657,7 @@ globalViewQua=
               quat2.setFromRotationMatrix(m);
               quat1.multiply(quat2);
 
-
-
-              this._camera.quaternion.slerp(quat1, 0.1);
-              //console.log(sensor_quaternion);
-
-              //this._fov += 0.02*((20+globalViewQua[currentIdx][5]*40/500)-this._fov);
-              //this._camera.setLens(this._fov);
-/*
-              this._camera.position.x = -X;
-              this._camera.position.y = -Y;
-              this._camera.position.z = -Z;*/
+              this._camera.quaternion.slerp(quat1, 0.2);
             }
           }
 
@@ -2681,22 +2690,6 @@ globalViewQua=
                 this._camera.position.x = ppp.x;
                 this._camera.position.y = ppp.y;
                 this._camera.position.z = ppp.z;
-              /*var rotation = new THREE.Euler().setFromQuaternion( this._camera.quaternion, 'XYZ' );
-
-              var cx = 500 * Math.sin( this._phi ) * Math.cos( this._theta );
-              var cy = 500 * Math.cos( this._phi );
-              var cz = 500 * Math.sin( this._phi ) * Math.sin( this._theta );
-
-              console.log(rotation);
-              if(this.options.flatProjection) {
-                  this._camera.position.x = 0;
-                  this._camera.position.y = 0;
-                  this._camera.position.z = 0;
-              } else {
-                  this._camera.position.x = - cx;
-                  this._camera.position.y = - cy;
-                  this._camera.position.z = - cz;
-              }*/
           }
 
 /*
