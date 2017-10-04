@@ -2643,9 +2643,9 @@ g_curIdx=0;
               quat1.setFromRotationMatrix(m);
 
 
-              sensor_quaternion_init.inverse();
               quat1.multiply(sensor_quaternion_init);
 
+              sensor_quaternion.inverse();
               quat1.multiply(sensor_quaternion);
 
 
