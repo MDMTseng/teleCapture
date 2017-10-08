@@ -8,7 +8,7 @@
  */
 
 
-offsetTime=7.6;
+offsetT_Target=-0.05;
 
 var Detector = {
 
@@ -121,6 +121,9 @@ three.js r65 or higher
             hideControls: false,
             lon: 0,
             lat: 0,
+            offsetT:0,
+            frameC:-1,
+            frameUpdated:false,
             loop: "loop",
             muted: true,
 			volume: 1,
@@ -272,6 +275,7 @@ three.js r65 or higher
                 this._video.addEventListener("progress", function() {
                     var percent = null;
                     if (self._video && self._video.buffered && self._video.buffered.length > 0 && self._video.buffered.end && self._video.duration) {
+                      console.log("buffered.end(0)" );
                         percent = self._video.buffered.end(0) / self._video.duration;
                     }
                     // Some browsers (e.g., FF3.6 and Safari 5) cannot calculate target.bufferered.end()
@@ -279,6 +283,7 @@ three.js r65 or higher
                     // Browsers that support the else if do not seem to have the bufferedBytes value and
                     // should skip to there. Tested in Safari 5, Webkit head, FF3.6, Chrome 6, IE 7/8.
                     else if (self._video && self._video.bytesTotal !== undefined && self._video.bytesTotal > 0 && self._video.bufferedBytes !== undefined) {
+                      console.log("self._video.bufferedBytes");
                         percent = self._video.bufferedBytes / self._video.bytesTotal;
                     }
 
@@ -314,6 +319,7 @@ three.js r65 or higher
 
 				// IE 11 and previous not supports THREE.Texture([video]), we must create a canvas that draws the video and use that to create the Texture
 				var isIE = navigator.appName == 'Microsoft Internet Explorer' || !!(navigator.userAgent.match(/Trident/) || navigator.userAgent.match(/rv 11/));
+        this._testcanvas = document.createElement('canvas');
 				if (isIE) {
                     this._videocanvas = document.createElement('canvas');
 					this._texture = new THREE.Texture(this._videocanvas);
@@ -615,13 +621,13 @@ three.js r65 or higher
 			   event.preventDefault();
 			   switch (keyCode) {
 				   //Arrow left
-				   case 37: 
-offsetTime+=0.01;
-                   this._lon -= offset;
+				   case 37:
+                    offsetT_Target+=0.01;
+                   //this._lon -= offset;
 					   break;
 				   //Arrow right
-				   case 39: this._lon += offset;
-offsetTime-=0.01;
+				   case 39: //this._lon += offset;
+                    offsetT_Target-=0.01;
 					   break;
 				   //Arrow up
 				   case 38: this._lat += offset;
@@ -674,6 +680,12 @@ offsetTime-=0.01;
 		},
 
         animate: function() {
+
+
+                                  /*var data1 = context.getImageData(50, 50, 1, 1).data;
+                                  var data2 = context.getImageData(1050, 1050, 1, 1).data;
+                                  this.options.frameC++;
+                                  console.log(data[0],data2);*/
             // set our animate function to fire next time a frame is ready
             this._requestAnimationId = requestAnimationFrame( this.animate.bind(this) );
 
@@ -682,24 +694,42 @@ offsetTime-=0.01;
 					if(this._videocanvas) {
                         this._videocanvas.getContext('2d').drawImage(this._video, 0, 0, this._videocanvas.width, this._videocanvas.height);
                     }
-                    if(typeof(this._texture) !== "undefined" ) {
+                    if(typeof(this._testcanvas) !== "undefined" ) {
+                        ctx=this._testcanvas.getContext('2d');
+                        ctx.drawImage(this._video, 0, 0, 50, 50);
+                        var data1 = ctx.getImageData(0, 0, 50, 50).data;
+                        this.options.frameUpdated=false;
+                        if(typeof(this._testDiffData) != "undefined" ){
+                          for(idx=0;idx<data1.length;idx+=3)
+                          {
+                            if(idx%4==3)idx--;
+                            if(this._testDiffData[idx]!=data1[idx])
+                            {
+                              this.options.frameUpdated=true;
+                              break;
+                            }
+                          }
+                        }
+                        this._testDiffData=data1;
+
                         var ct = new Date().getTime();
-                        if(ct - this._time >= 30) {
-                            this._texture.needsUpdate = true;
+                        //if(ct - this._time >= 30)
+                        {
+                            this._texture.needsUpdate = this.options.frameUpdated;
                             this._time = ct;
                         }
                     }
                 }
             }
-
+            //console.log("dsfsdf")
             this.render();
         },
         Arr2Quat: function(quaArr){
 
-          var W=quaArr[4]/100000;
-          var X=quaArr[1]/100000;
-          var Y=quaArr[2]/100000;
-          var Z=quaArr[3]/100000;
+          var W=quaArr[1];
+          var X=quaArr[2];
+          var Y=quaArr[3];
+          var Z=quaArr[4];
           sensor_quaternion = new THREE.Quaternion();
           sensor_quaternion.x = X;
           sensor_quaternion.y = Y;
@@ -723,14 +753,35 @@ offsetTime-=0.01;
           return 0;
         },
         render: function() {
-          if (typeof this._video != 'undefined')
+          if (typeof this._video != 'undefined' && this.options.frameUpdated)
           {
             //this.curIdx=0;
             //console.log(">",this._video.currentTime);
-            offsetT=this._video.currentTime+offsetTime;
+            //this.options.offsetT=(this.options.offsetT-0.002)*0.8+0.002;//Try to converge to 0
+            var spf=1/30.0;
+            if(this.options.offsetT>spf)this.options.offsetT-=spf;
+            else if(this.options.offsetT<-spf)this.options.offsetT+=spf;
 
-          console.log(offsetTime);
-            var currentIdx = this.QuatArrSeeking(this.options.tc_globalViewQua,this.options.tc_curIdx,offsetT);
+            tmpT=this._video.currentTime+this.options.offsetT;
+            var estFrameC=Math.round(tmpT/spf);
+
+            if(this.options.frameC==estFrameC)
+            {
+              estFrameC+=0.5;
+            }
+            else {
+
+              this.options.frameC=estFrameC;
+            }
+            var IMU_Data_time=estFrameC*spf;
+            this.options.offsetT+=0.1*(IMU_Data_time-tmpT);
+
+            console.log(this._video.currentTime,"..",offsetT_Target);
+
+            IMU_Data_time+=offsetT_Target;
+            //offsetT=this.options.frameC*0.033+offsetTime;
+
+            var currentIdx = this.QuatArrSeeking(this.options.tc_globalViewQua,this.options.tc_curIdx,IMU_Data_time);
             this.options.tc_curIdx = currentIdx;
             currentIdx%=this.options.tc_globalViewQua.length;
             progress=this._video.currentTime/this._video.duration;
@@ -742,7 +793,7 @@ offsetTime-=0.01;
                 this._lat=this.options.tc_globalViewQua[currentIdx][3]/10;
                 //this._lat=globalViewQua[currentIdx][2];
                 this._lon=-this.options.tc_globalViewQua[currentIdx][2]/10;
-                console.log(this._camera);
+                //console.log(this._camera);
             }
             else
             {
@@ -751,8 +802,8 @@ offsetTime-=0.01;
               sensor_quaternion_init=this.Arr2Quat(this.options.tc_globalViewQua[0]);
               sensor_quaternion=this.Arr2Quat(this.options.tc_globalViewQua[currentIdx]);
               sensor_quaternion.slerp(
-                this.Arr2Quat(this.options.tc_globalViewQua[currentIdx+1]), 
-                (offsetT-this.options.tc_globalViewQua[currentIdx][0])/
+                this.Arr2Quat(this.options.tc_globalViewQua[currentIdx+1]),
+                (IMU_Data_time-this.options.tc_globalViewQua[currentIdx][0])/
                 (this.options.tc_globalViewQua[currentIdx+1][0]-this.options.tc_globalViewQua[currentIdx][0]));
 
               quat1 = new THREE.Quaternion();
@@ -783,12 +834,18 @@ offsetTime-=0.01;
               quat1.multiply(quat2);
 
 
-              m.makeRotationY (-Math.PI/2);
+              m.makeRotationY (-this._lon/180*3.3);
+              quat2.setFromRotationMatrix(m);
+              quat1.multiply(quat2);
+              m.makeRotationX (this._lat/180*3.3);
               quat2.setFromRotationMatrix(m);
               quat1.multiply(quat2);
 
-              this._camera.quaternion.slerp(quat1, 0.8);
+              this._camera.quaternion.slerp(quat1, 1);
             }
+          }
+          else {
+            console.log("NO Change");
           }
 
           if(this._camera.useQuaternions!=true)
