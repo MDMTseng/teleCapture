@@ -25,7 +25,7 @@ var vm=new Vue({
       GPMD.func1();
     },
     fetchJson:()=>{
-      UTILITY.ajax_fix_gpmf2json("GET","data/GPFR0136.MP4.json",{
+      UTILITY.ajax_fix_gpmf2json("GET","data/MAG_Test156.MP4.json",{
         resolve:(data)=>{
           GPMD.extractIMUData(data);
         },
