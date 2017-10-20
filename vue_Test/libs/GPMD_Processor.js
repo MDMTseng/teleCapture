@@ -71,13 +71,21 @@ let GPMD={
     {
       return null;
     }
+
+    while(idx<0)
+    {
+      if(group==0)return null;
+      group--;
+      idx+=IMU_data[group][dataType_str].length;
+    }
+
     let IMU_group_base=IMU_data[group];
 
     while(idx>=IMU_group_base[dataType_str].length)
     {
       idx-=IMU_group_base[dataType_str].length;
 
-      if(group==IMU_data.length-1)return -1;
+      if(group==IMU_data.length-1)return null;
       group++;
       
       if(group>=IMU_data.length)
@@ -108,9 +116,23 @@ let GPMD={
     let STP_L=IMU_group_base.STPS[STP_L_IDX];
 
 
+    let STP_H;
     gidx=GPMD.findRealGroupIdx(IMU_data,"STPS",group,STP_L_IDX+1);
+    if(gidx==null)
+    {//No next STPS data to use, find previous STPS and estimate it
+      let pre_idx=GPMD.findRealGroupIdx(IMU_data,"STPS",group,STP_L_IDX-1);
 
-    let STP_H=IMU_data[gidx.group].STPS[gidx.idx];
+      let STP_pre=IMU_data[pre_idx.group].STPS[pre_idx.idx];
+
+      STP_H = STP_L + (STP_L - STP_pre);
+      return null;
+    }
+    else
+    {
+      STP_H=IMU_data[gidx.group].STPS[gidx.idx];
+    }
+
+
 
     return (STP_H-STP_L)*STP_L_ratio+STP_L;
   },
@@ -162,13 +184,15 @@ let GPMD={
     }
 
 
-    let time_H=0;
+
+    let gtime_H=0;
+    let gtime_L=0;
 
     for(i=start_group;i<IMU_data.length;)
-    {
+    { 
       if(IMU_data[i].STPS[0]>time_us)
       {
-        time_H=IMU_data[i].STPS[0];
+        gtime_H=IMU_data[i].STPS[0];
         i--;
         break;
       }
@@ -179,6 +203,7 @@ let GPMD={
     {
       return null;
     }
+    gtime_L=IMU_data[i].STPS[0];
 
     let IMU_group_base_idx=i;
     let IMU_group_base=IMU_data[i];
@@ -188,32 +213,22 @@ let GPMD={
     {
       if(IMU_group_base.STPS[j]>time_us)
       {
-        time_H=IMU_group_base.STPS[j];
         break;
       }
       j++;
     } 
     j--;
 
-    let time_L=IMU_group_base.STPS[j];
-    let tratio=(time_us-time_L)/(time_H-time_L);
+    let tratio=(time_us-gtime_L)/(gtime_H-gtime_L);
 
-
-    let ratio_data2stps=1.0*IMU_group_base[dataType_str].length/IMU_group_base.STPS.length;
-    let dratio=tratio*ratio_data2stps;
-    let DATA_L_IDX=Math.floor(tratio*ratio_data2stps);
+    let dratio=tratio*IMU_group_base[dataType_str].length;
+    let DATA_L_IDX=Math.floor(dratio);
     dratio-=DATA_L_IDX;
-
 
 
     gidx=GPMD.findRealGroupIdx(IMU_data,dataType_str,IMU_group_base_idx,DATA_L_IDX+1);
     let DATA_L=IMU_group_base[dataType_str][DATA_L_IDX];
     let DATA_H=IMU_data[gidx.group][dataType_str][gidx.idx];
-
-
-
-
-
 
     return {
       ratio:dratio,
@@ -227,18 +242,7 @@ let GPMD={
     };
   },
   ProcessGYRO:(GYRO_data,Draw=false)=>{
-
-
-    GYRO_ARR=[];
-    yscal=100;
-    interval=10;
-
     let euler = new THREE.Euler();
-
-    let rotateInt = new THREE.Quaternion(0,0,0,1);
-
-    let ori_quat=[];
-    let counter=0;
 
     GYRO_data.forEach((GYRO_data_group,idx)=>{
       let SCAL=GYRO_data_group.SCAL;
@@ -257,46 +261,49 @@ let GPMD={
         let quat = new THREE.Quaternion();
         quat.setFromEuler(euler);
 
-
         GYRO_data_group.rotate_quat.push(quat);
-
-        rotateInt.multiply(quat);
-        if(counter%100==0)
-        {
-
-          GYRO_ARR.push(new THREE.Vector3(euler._x,euler._y,euler._z));
-          let orien = new THREE.Quaternion();
-          orien.copy(rotateInt);
-
-
-          if(ifshowEuler)
-          {
-
-
-            let eulerX = new THREE.Euler();
-            eulerX.setFromQuaternion(orien);
-            ori_quat.push(eulerX);
-
-          }
-          else
-          {
-            ori_quat.push(orien);
-          }
-        }
-        counter++;
       }
 
     });
 
     if(Draw)
-      DrawVectorGraph(ori_quat,0,400,1030,30);
+    {
+      let ori_quat=[];
+      let rotateInt = new THREE.Quaternion(0,0,0,1);
+      let Counter=0;
+      GYRO_data.forEach((GYRO_data_group,idx)=>{
+        GYRO_data_group.rotate_quat.forEach((rotate_quat)=>{
+          rotateInt.multiply(rotate_quat);
+
+
+          let tmp_quat = new THREE.Quaternion();
+          tmp_quat.copy(rotateInt);
+
+          if((Counter++)&100==0)return;
+          if(ifshowEuler)
+          {
+
+
+            let eulerX = new THREE.Euler();
+            eulerX.setFromQuaternion(tmp_quat);
+            ori_quat.push(eulerX);
+
+          }
+          else
+          {
+            ori_quat.push(tmp_quat);
+          }
+
+        });
+      });
+      DrawVectorGraph(ori_quat,0,400,1000,30);
+    }
 
     //console.log(GYRO_data);
   },
   ProcessACCL:(ACCL_data,Draw=false)=>{
     let yscal=0.5;
 
-    ACCL_ARR=[];
     ACCL_data.forEach((ACCL_data_group,idx)=>{
       let SCAL=ACCL_data_group.SCAL;
       ACCL_data_group.up_vec=[];
@@ -308,17 +315,23 @@ let GPMD={
       {
         let up = new THREE.Vector3((ACCL_data_group.ACCL[i+0]/SCAL+5.3), ACCL_data_group.ACCL[i+1]/SCAL, (ACCL_data_group.ACCL[i+2]/SCAL+5.3)) ;
         ACCL_data_group.up_vec.push(up);
-        ACCL_ARR.push(up);
       }
     });
 
     if(Draw)
+    {
+      ACCL_ARR=[];
+      ACCL_data.forEach((ACCL_data_group,idx)=>{
+        ACCL_data_group.up_vec.forEach((up_vec)=>{
+          ACCL_ARR.push(up_vec);
+        });
+      });
       DrawVectorGraph(ACCL_ARR,0,100,1000,2);
+    }
 
   },
   ProcessMAGN:(MAGN_data,Draw=false)=>{
-    yscal=1
-    MAGN_ARR=[];
+
     MAGN_data.forEach((MAGN_data_group,idx)=>{
       let SCAL=MAGN_data_group.SCAL;
       MAGN_data_group.north_vec=[];
@@ -336,14 +349,21 @@ let GPMD={
 
         let north = new THREE.Vector3(x,y,z);
         MAGN_data_group.north_vec.push(north);
-        MAGN_ARR.push(north);
       }
       //console.log(euler)
 
     });
 
     if(Draw)
+    {
+      MAGN_ARR=[];
+      MAGN_data.forEach((MAGN_data_group,idx)=>{
+        MAGN_data_group.north_vec.forEach((north_vec)=>{
+          MAGN_ARR.push(north_vec);
+        });
+      });
       DrawVectorGraph(MAGN_ARR,0,200,1000,2);
+    }
     //console.log(">>>>>>>>>>",GPMD.GetTimeDiff_us(ACCL_data,"EULER",ACCL_data.length-1,147));
 
   },
@@ -379,57 +399,122 @@ let GPMD={
     let interp_North=new THREE.Vector3();
 
 
-    var FilteredQuat = new THREE.Quaternion();
-    let loop_times=500;
-    let dataArr=[];
-    for(let i=0;i<loop_times;i++)
-    {
-      let time = i*(ACCL_data.length-1)*1000000/loop_times+ACCL_data[0].STPS[0];
-      let fusion=new THREE.Vector3();
-      let SS=GPMD.GetIDX_us(ACCL_data,"up_vec",time);
-      interp_Up.copy(SS.DL);
-      interp_Up.lerp ( SS.DH, SS.ratio);
-
-      SS=GPMD.GetIDX_us(MAGN_data,"north_vec",time);
-      /**/
-      if(SS == null)
-      {
-        interp_North.copy(MAGN_data[0].north_vec[0]);
-      }
-      else
-      {
-
-        interp_North.copy(SS.DL);
-        interp_North.lerp ( SS.DH, SS.ratio);
-      }
-
-      let quat=GPMD.ConvertUpNorthToQuaternion(interp_Up,interp_North);
-      if(i==0)
-      {
-        FilteredQuat.copy(quat);
-      }
-      else
-      {
-        FilteredQuat.slerp(quat,0.5);
-      }
-      quat.copy(FilteredQuat);
+    var FilteredQuat = null;
 
 
+    ACCL_data.forEach((ACCL_data_group,g_idx)=>{
+      ACCL_data_group.fuse_ACCL_MAGN_quat=[];
+      for(a_idx=0;a_idx<ACCL_data_group.up_vec.length;a_idx++)
+      {
+        let interp_Up = ACCL_data_group.up_vec[a_idx];
+        let time_us=GPMD.GetDataTimePoint_us(ACCL_data,'up_vec',g_idx,a_idx);
 
-      if(ifshowEuler)
-      {
-        let eulerX = new THREE.Euler();
-        eulerX.setFromQuaternion(quat);
-        dataArr.push(eulerX);
+        let SS=GPMD.GetIDX_us(MAGN_data,"north_vec",time_us);
+        if(SS == null)
+        {
+          interp_North.copy(MAGN_data[0].north_vec[0]);
+        }
+        else
+        {
+
+          interp_North.copy(SS.DL);
+          interp_North.lerp ( SS.DH, SS.ratio);
+        }
+
+        let quat=GPMD.ConvertUpNorthToQuaternion(interp_Up,interp_North);
+        if(FilteredQuat==null)
+        {
+          FilteredQuat=new THREE.Quaternion();
+          FilteredQuat.copy(quat);
+        }
+        else
+        {
+          FilteredQuat.slerp(quat,0.1);
+        }
+        quat.copy(FilteredQuat);
+        ACCL_data_group.fuse_ACCL_MAGN_quat.push(quat);
+
       }
-      else
-      {
-        dataArr.push(quat);
-      }
+
+    });
+
+    if(Draw){
+      FUSE_ARR=[];
+      ACCL_data.forEach((ACCL_data_group,g_idx)=>{
+        ACCL_data_group.fuse_ACCL_MAGN_quat.forEach((quat)=>{
+          if(ifshowEuler)
+          {
+            let eulerX = new THREE.Euler();
+            eulerX.setFromQuaternion(quat);
+            FUSE_ARR.push(eulerX);
+          }
+          else
+          {
+            FUSE_ARR.push(quat);
+          }
+        });
+      });
+      DrawVectorGraph(FUSE_ARR,0,600,1000,30);
     }
-    if(Draw)
-      DrawVectorGraph(dataArr,0,600,1000,30);
     //console.log(dataArr);
+  },
+  FuseGYRO_ACCL_MAGN:(GYRO_data,ACCL_data,MAGN_data,Draw=false)=>{
+
+    GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,true);
+    let rotateInt = new THREE.Quaternion(0,0,0,1);
+    rotateInt.copy(ACCL_data[0].fuse_ACCL_MAGN_quat[0]);
+    let Counter=0;
+    GYRO_data.forEach((GYRO_data_group,g_idx)=>{
+      GYRO_data_group.orientation_quat=[];
+      GYRO_data_group.rotate_quat.forEach((rotate_quat,a_idx)=>{
+
+        let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
+
+        rotateInt.multiply(rotate_quat);
+        Counter++;
+
+        let tmpQuat = new THREE.Quaternion();
+
+        if(Counter%300==0)
+        {
+          let SS=GPMD.GetIDX_us(ACCL_data,"fuse_ACCL_MAGN_quat",time_us);
+
+          if(SS!=null)
+          {
+            tmpQuat.copy(SS.DL);
+            tmpQuat.slerp(SS.DH, SS.ratio);
+
+            rotateInt.slerp(tmpQuat,0.01);
+          }
+        }
+        tmpQuat.copy(rotateInt);
+
+        GYRO_data_group.orientation_quat.push(tmpQuat);
+
+
+
+
+      });
+    });
+
+    console.log(GYRO_data);
+
+    let ori_quat=[];
+    for(i=000;;i++)
+    {
+      let time_us=i*300000+GYRO_data[0].STPS[0];
+      let SS=GPMD.GetIDX_us(GYRO_data,"orientation_quat",time_us);
+      if(SS==null)
+      {
+        break;
+      }
+        //console.log(SS);
+      let eulerX = new THREE.Euler();
+      eulerX.setFromQuaternion(SS.DL);
+      ori_quat.push(eulerX);
+
+    }
+    DrawVectorGraph(ori_quat,0,800,1000,30);
 
 
   },
@@ -451,10 +536,11 @@ let GPMD={
           MAGN_data.push(STRM);
       });
     });
+    let DrawG=false;
     GPMD.ProcessGYRO(GYRO_data,true);
-    GPMD.ProcessACCL(ACCL_data,true);
-    GPMD.ProcessMAGN(MAGN_data,true);
-    GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,true);
+    GPMD.ProcessACCL(ACCL_data,DrawG);
+    GPMD.ProcessMAGN(MAGN_data,DrawG);
+    GPMD.FuseGYRO_ACCL_MAGN(GYRO_data,ACCL_data,MAGN_data,DrawG);
   }
 
 }
