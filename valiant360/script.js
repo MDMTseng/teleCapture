@@ -1,36 +1,19 @@
 var vm=new Vue({
   el: '#app',
   data: {
-    message: 'Hello Vue.js',
-    message2: 'You loaded this page on ' + new Date(),
-    seen: false,
-    todos: [
-      { text: 'Learn JavaScript' },
-      { text: 'Learn Vue' },
-      { text: 'Build something awesome' }
-    ],
+    metadata:null,
     fetching_lock:false
   },
   methods: {
-    reverseMessage: function () {
-      this.seen=~this.seen;
-      this.message = this.message.split('').reverse().join('')
-    },
-
-    destroySelfX: function () {
-      this.$destroy();
-    },
-
-    group1:()=>{
-      GPMD.func1();
-    },
     fetchJson:()=>{
       UTILITY.ajax_fix_gpmf2json("GET","data/GPFR0142.MP4.json",{
         resolve:(data)=>{
-          GPMD.extractIMUData(data);
+          metadata=GPMD.extractIMUData(data);
+          console.log(metadata);
         },
         reject:(data)=>{
           console.log(data);
+          metadata=null;
         }
       })
     }

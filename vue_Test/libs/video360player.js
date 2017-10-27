@@ -1,14 +1,3 @@
-/*! jquery.valiant360 - v0.4.3 - 2016-10-11
- * http://flimshaw.github.io/Valiant360
- * Copyright (c) 2016 Charlie Hoey <me@charliehoey.com>; Licensed MIT */
-
-/**
- * @author alteredq / http://alteredqualia.com/
- * @author mr.doob / http://mrdoob.com/
- */
-
-
-offsetT_Target = -0.05;
 
 var Detector = {
 
@@ -70,35 +59,7 @@ var Detector = {
 
   }
 
-};
-/*!
- * Valiant360 panorama video player/photo viewer jquery plugin
- *
- * Copyright (c) 2014 Charlie Hoey <@flimshaw>
- *
- * Released under the MIT license:
- *   http://www.opensource.org/licenses/mit-license.php
- *
- * Jquery plugin pattern based on https://github.com/jquery-boilerplate/jquery-patterns/blob/master/patterns/jquery.basic.plugin-boilerplate.js
- */
 
-/* REQUIREMENTS:
-
-jQuery 1.7.2 or greater
-three.js r65 or higher
-
-*/
-
-/*!
- * jQuery lightweight plugin boilerplate
- * Original author: @ajpiano
- * Further changes, comments: @addyosmani
- * Licensed under the MIT license
- */
-
-// the semi-colon before the function invocation is a safety
-// net against concatenated scripts and/or other plugins
-// that are not closed properly.
 
 ;
 (function($, THREE, Detector, window, document, undefined) {
@@ -117,7 +78,7 @@ three.js r65 or higher
   // regularly referenced in your plugin).
 
   // Create the defaults once
-  var pluginName = "Valiant360",
+  var pluginName = "teleCap360",
     plugin, // will hold reference to instantiated Plugin
     defaults = {
       crossOrigin: 'anonymous',
@@ -138,8 +99,9 @@ three.js r65 or higher
       debug: false,
       flatProjection: false,
       autoplay: true,
-      tc_globalViewQua: null,
-      tc_curIdx: 0
+      tc_globalViewQua: globalViewQua_,
+      tc_curIdx: 0,
+      width=800,height=600
     };
 
   // The actual plugin constructor
@@ -186,17 +148,6 @@ three.js r65 or higher
       this._lon = this.options.lon;
       this._fov = this.options.fov;
 
-      // save our original height and width for returning from fullscreen
-      this._originalWidth = $(this.element).find('canvas').width();
-      this._originalHeight = $(this.element).find('canvas').height();
-
-      // add a class to our element so it inherits the appropriate styles
-      $(this.element).addClass('Valiant360_default');
-
-      // add tabindex attribute to enable the focus on the element (required for keyboard controls)
-      if (this.options.keyboardControls && !$(this.element).attr("tabindex")) {
-        $(this.element).attr("tabindex", "1");
-      }
 
       this.createMediaPlayer();
       this.createControls();
@@ -222,17 +173,18 @@ three.js r65 or higher
       this._scene = new THREE.Scene();
 
       // create ThreeJS camera
-      this._camera = new THREE.PerspectiveCamera(this._fov, $(this.element).width() / $(this.element).height(), 0.1, 1000);
+      this._camera = new THREE.PerspectiveCamera(this._fov, this.width / this.height, 0.1, 1000);
       this._camera.setLens(this._fov);
 
       // create ThreeJS renderer and append it to our object
       this._renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
-      this._renderer.setSize($(this.element).width(), $(this.element).height());
+      //this._renderer.setSize($(this.element).width(), $(this.element).height());
+      this._renderer.setSize( this.width , this.height);
       this._renderer.autoClear = false;
       this._renderer.setClearColor(0x333333, 1);
 
       // append the rendering element to this div
-      $(this.element).append(this._renderer.domElement);
+      //$(this.element).append(this._renderer.domElement);
 
       var createAnimation = function() {
         self._texture.generateMipmaps = false;
@@ -855,7 +807,7 @@ three.js r65 or higher
           this._camera.quaternion.slerp(quat1, 1);
         }
       } else {
-        //console.log("NO Change");
+        console.log("NO Change");
       }
 
       if (this._camera.useQuaternions != true) {
