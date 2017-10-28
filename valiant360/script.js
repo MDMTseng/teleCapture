@@ -5,11 +5,19 @@ var vm=new Vue({
     fetching_lock:false
   },
   methods: {
+
     fetchJson:()=>{
-      UTILITY.ajax_fix_gpmf2json("GET","data/GPFR0142.MP4.json",{
+      code="0479";
+      UTILITY.ajax_fix_gpmf2json("GET","data/GPFR"+code+".MP4.json",{
         resolve:(data)=>{
           metadata=GPMD.extractIMUData(data);
           console.log(metadata);
+
+
+          console.log(">>>",playerv360);
+          playerv360[0].setOrientationData(metadata);
+          playerv360[0].loadVideo("data/VIDEO_"+code+".mp4");
+          playerv360[0].play();
         },
         reject:(data)=>{
           console.log(data);

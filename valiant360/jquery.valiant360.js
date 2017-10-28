@@ -7,6 +7,7 @@
  * @author mr.doob / http://mrdoob.com/
  */
 
+var playerv360=[];
 
 offsetT_Target = -0.05;
 
@@ -138,7 +139,7 @@ three.js r65 or higher
       debug: false,
       flatProjection: false,
       autoplay: true,
-      tc_globalViewQua: null,
+      tc_videoOrientation: null,
       tc_curIdx: 0
     };
 
@@ -162,6 +163,7 @@ three.js r65 or higher
   Plugin.prototype = {
 
     init: function() {
+      playerv360.push(this);
       // Place initialization logic here
       // You already have access to the DOM element and
       // the options via the instance, e.g. this.element
@@ -742,117 +744,61 @@ three.js r65 or higher
       //console.log("dsfsdf")
       this.render();
     },
-    Arr2Quat: function(quaArr) {
-
-      var W = quaArr[1];
-      var X = quaArr[2];
-      var Y = quaArr[3];
-      var Z = quaArr[4];
-      sensor_quaternion = new THREE.Quaternion();
-      sensor_quaternion.x = X;
-      sensor_quaternion.y = Y;
-      sensor_quaternion.z = Z;
-      sensor_quaternion.w = W;
-      return sensor_quaternion;
-    },
-    QuatArrSeeking: function(Arr, start_idx, time_stamp) {
-      if (start_idx >= Arr.length) return 0;
-      if (Arr[start_idx][0] > time_stamp) {
-        return 0;
-      }
-
-      for (i = start_idx + 1; i < Arr.length; i++) {
-        if (Arr[i][0] > time_stamp) {
-          return i - 1;
-        }
-      }
-      return 0;
+    setOrientationData: function(orientation) {
+        console.log(this);
+        this.options.tc_videoOrientation=orientation;
     },
     render: function() {
       if (typeof this._video != 'undefined' && this.options.frameUpdated) {
-        //this.curIdx=0;
-        //console.log(">",this._video.currentTime);
-        //this.options.offsetT=(this.options.offsetT-0.002)*0.8+0.002;//Try to converge to 0
-        var spf = 1 / 30.0;
-        if (this.options.offsetT > spf) this.options.offsetT -= spf;
-        else if (this.options.offsetT < -spf) this.options.offsetT += spf;
 
-        tmpT = this._video.currentTime + this.options.offsetT;
-        var estFrameC = Math.round(tmpT / spf);
+                  this._camera.useQuaternions = true;
 
-        if (this.options.frameC == estFrameC) {
-          estFrameC += 0.5;
-        } else {
-
-          this.options.frameC = estFrameC;
-        }
-        var IMU_Data_time = estFrameC * spf;
-        this.options.offsetT += 0.1 * (IMU_Data_time - tmpT);
-
-        console.log(this._video.currentTime, "..", offsetT_Target);
-
-        IMU_Data_time += offsetT_Target;
-        //offsetT=this.options.frameC*0.033+offsetTime;
-
-        var currentIdx = this.QuatArrSeeking(this.options.tc_globalViewQua, this.options.tc_curIdx, IMU_Data_time);
-        this.options.tc_curIdx = currentIdx;
-        currentIdx %= this.options.tc_globalViewQua.length;
-        progress = this._video.currentTime / this._video.duration;
         /*this._lat=90*progress;
         this._lon=180*progress;*/
-        if (this.options.tc_globalViewQua[0].length == 5) //Euler
         {
-          this._camera.useQuaternions = false;
-          this._lat = this.options.tc_globalViewQua[currentIdx][3] / 10;
-          //this._lat=globalViewQua[currentIdx][2];
-          this._lon = -this.options.tc_globalViewQua[currentIdx][2] / 10;
-          //console.log(this._camera);
-        } else {
 
-          this._camera.useQuaternions = true;
-          sensor_quaternion_init = this.Arr2Quat(this.options.tc_globalViewQua[0]);
-          sensor_quaternion = this.Arr2Quat(this.options.tc_globalViewQua[currentIdx]);
-          sensor_quaternion.slerp(
-            this.Arr2Quat(this.options.tc_globalViewQua[currentIdx + 1]),
-            (IMU_Data_time - this.options.tc_globalViewQua[currentIdx][0]) /
-            (this.options.tc_globalViewQua[currentIdx + 1][0] - this.options.tc_globalViewQua[currentIdx][0]));
+          let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",this._video.currentTime*1000000+this.options.tc_videoOrientation[0].STPS[0]);
 
-          quat1 = new THREE.Quaternion();
+
+
+          quat1 = new THREE.Quaternion(0,0,0,1);
           quat2 = new THREE.Quaternion();
           var m = new THREE.Matrix4();
-          m.makeRotationX(-Math.PI / 2);
+
+
+
+          m.makeRotationX ( -Math.PI/2);    
 
           quat1.setFromRotationMatrix(m);
 
 
-          /*
-                        m.makeRotationZ ( -1.6);
-                        quat2.setFromRotationMatrix(m);
-                        quat1.multiply(quat2);
-          */
 
-          quat1.multiply(sensor_quaternion_init);
-
-          sensor_quaternion.inverse();
-          quat1.multiply(sensor_quaternion);
+          quat2.copy(SS.DL);
+          quat2.slerp(SS.DH,SS.ratio);
+          quat2.inverse();
+          quat1.multiply(quat2);
 
 
-          m.set(0, 0, 1, 0,
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 0, 1, );
+          m.set( 0,0,1,0,
+                 1,0,0,0,
+                 0,1,0,0,
+                 0,0,0,1, );
           quat2.setFromRotationMatrix(m);
           quat1.multiply(quat2);
 
 
-          m.makeRotationY(-this._lon / 180 * 3.3);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-          m.makeRotationX(this._lat / 180 * 3.3);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
 
-          this._camera.quaternion.slerp(quat1, 1);
+          /*m.makeRotationZ(Math.PI / 4);
+
+          quat1.setFromRotationMatrix(m);*/
+
+
+          this._camera.quaternion.copy(quat1);
+
+
+
+
+
         }
       } else {
         //console.log("NO Change");
@@ -898,6 +844,7 @@ three.js r65 or higher
     // Video specific functions, exposed to controller
     play: function() {
       //code to play media
+      this.hideWaiting();
       this._video.play();
     },
 

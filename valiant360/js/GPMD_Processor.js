@@ -515,7 +515,7 @@ let GPMD={
             tmpQuat.copy(SS.DL);
             tmpQuat.slerp(SS.DH, SS.ratio);
 
-            rotateInt.slerp(tmpQuat,0.01);
+            rotateInt.slerp(tmpQuat,0.0001);
           }
           tmpQuat.copy(rotateInt);
           GYRO_data_group.orientation_quat.push(tmpQuat);
