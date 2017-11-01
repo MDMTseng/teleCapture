@@ -454,7 +454,7 @@ let GPMD={
         }
         else
         {
-          FilteredQuat.slerp(quat,1);
+          FilteredQuat.slerp(quat,0.1);
         }
         quat.copy(FilteredQuat);
         ACCL_data_group.fuse_ACCL_MAGN_quat.push(quat);
@@ -502,7 +502,6 @@ let GPMD={
         let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
 
         rotateInt.multiply(rotate_quat);
-        Counter++;
 
 
         if(Counter%16==0)
@@ -515,11 +514,13 @@ let GPMD={
             tmpQuat.copy(SS.DL);
             tmpQuat.slerp(SS.DH, SS.ratio);
 
-            rotateInt.slerp(tmpQuat,0.0001);
+            rotateInt.slerp(tmpQuat,0.001);
           }
           tmpQuat.copy(rotateInt);
           GYRO_data_group.orientation_quat.push(tmpQuat);
         }
+        Counter++;
+
       });
     });
     if(Draw)
