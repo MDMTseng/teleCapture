@@ -9,7 +9,7 @@
 
 var playerv360=[];
 
-offsetT_Target = -0.05;
+offsetT_Target = -0.026;
 
 var Detector = {
 
@@ -544,7 +544,7 @@ three.js r65 or higher
 
     onMouseWheel: function(event) {
 
-      var wheelSpeed = -0.01;
+      var wheelSpeed = -0.005;
 
       // WebKit
       if (event.wheelDeltaY) {
@@ -638,12 +638,12 @@ three.js r65 or higher
         switch (keyCode) {
           //Arrow left
           case 37:
-            offsetT_Target += 0.01;
+            offsetT_Target += 0.001;
             //this._lon -= offset;
             break;
             //Arrow right
           case 39: //this._lon += offset;
-            offsetT_Target -= 0.01;
+            offsetT_Target -= 0.001;
             break;
             //Arrow up
           case 38:
@@ -654,6 +654,7 @@ three.js r65 or higher
             this._lat -= offset;
             break;
         }
+        console.log(offsetT_Target);
         setTimeout(function() {
             var pressEvent = document.createEvent('CustomEvent');
             pressEvent.initCustomEvent("keyArrowPress", true, true, {
@@ -749,7 +750,7 @@ three.js r65 or higher
         this.options.tc_videoOrientation=orientation;
     },
     render: function() {
-      if (typeof this._video != 'undefined' && this.options.frameUpdated) {
+      if (typeof this._video != 'undefined' && this.options.frameUpdated && this.options.tc_videoOrientation !=null) {
 
                   this._camera.useQuaternions = true;
 
@@ -757,7 +758,7 @@ three.js r65 or higher
         this._lon=180*progress;*/
         {
 
-          let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",this._video.currentTime*1000000+this.options.tc_videoOrientation[0].STPS[0]);
+          let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
 
 
 
@@ -767,7 +768,7 @@ three.js r65 or higher
 
 
 
-          m.makeRotationX ( -Math.PI/2);    
+          m.makeRotationX ( -Math.PI/2);
 
           quat1.setFromRotationMatrix(m);
 
@@ -787,12 +788,19 @@ three.js r65 or higher
           quat1.multiply(quat2);
 
 
+          m.makeRotationY ( -Math.PI);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
 
-          /*m.makeRotationZ(Math.PI / 4);
 
-          quat1.setFromRotationMatrix(m);*/
+          /*m.makeRotationY ( this._lon * Math.PI / 180);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
 
 
+          m.makeRotationX ( -this._lat * Math.PI / 180);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);*/
           this._camera.quaternion.copy(quat1);
 
 

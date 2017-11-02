@@ -335,7 +335,7 @@ let GPMD={
         }
         else
         {
-          filteredUp.lerp(up,0.1);
+          filteredUp.lerp(up,0.01);
         }
         up.copy(filteredUp);
 
@@ -357,6 +357,7 @@ let GPMD={
   },
   ProcessMAGN:(MAGN_data,CALB_data,Draw=false)=>{
 
+    let filteredNorth=new THREE.Vector3();
     MAGN_data.forEach((MAGN_data_group,idx)=>{
       let SCAL=MAGN_data_group.SCAL;
       MAGN_data_group.north_vec=[];
@@ -373,6 +374,18 @@ let GPMD={
 
 
         let north = new THREE.Vector3(x,y,z);
+
+        if(idx==0 && i==0)
+        {
+          filteredNorth.copy(north);
+        }
+        else
+        {
+          filteredNorth.lerp(north,0.4);
+        }
+        north.copy(filteredNorth);
+
+
         MAGN_data_group.north_vec.push(north);
       }
       //console.log(euler)
@@ -445,6 +458,12 @@ let GPMD={
           interp_North.copy(SS.DL);
           interp_North.lerp ( SS.DH, SS.ratio);
         }
+        /*interp_North.x=1;
+        interp_North.y=0;
+        interp_North.z=0;*/
+        /*interp_Up.x=0;
+        interp_Up.y=0;
+        interp_Up.z=1;*/
 
         let quat=GPMD.ConvertUpNorthToQuaternion(interp_Up,interp_North);
         if(FilteredQuat==null)
@@ -483,14 +502,29 @@ let GPMD={
     }
     //console.log(dataArr);
   },
-  FuseGYRO_ACCL_MAGN:(GYRO_data,ACCL_data,MAGN_data,CALB_data,Draw=false)=>{
+  FuseGYRO_ACCL_MAGN:(GYRO_data,ACCL_data,MAGN_data,CALB_data,ifLockGeoRef=true,Draw=false)=>{
 
     GPMD.ProcessGYRO(GYRO_data,CALB_data,Draw);
-    GPMD.ProcessACCL(ACCL_data,CALB_data,Draw);
-    GPMD.ProcessMAGN(MAGN_data,CALB_data,Draw);
-    GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,Draw);
+
+    let alpha=0.01;
     let rotateInt = new THREE.Quaternion(0,0,0,1);
-    //rotateInt.copy(ACCL_data[0].fuse_ACCL_MAGN_quat[0]);
+
+    let forwardQuat= new THREE.Quaternion(0,0,0,1);
+
+    if(ifLockGeoRef)
+    {
+
+      GPMD.ProcessACCL(ACCL_data,CALB_data,Draw);
+      GPMD.ProcessMAGN(MAGN_data,CALB_data,Draw);
+      GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,Draw);
+      rotateInt.copy(ACCL_data[0].fuse_ACCL_MAGN_quat[0]);
+    }
+    else {
+      /*var m = new THREE.Matrix4();
+      m.makeRotationY ( Math.PI/2);
+      forwardQuat.setFromRotationMatrix(m);*/
+
+    }
     //rotateInt.copy(CALB_data.ORNT);
 
 
@@ -499,7 +533,6 @@ let GPMD={
       GYRO_data_group.orientation_quat=[];
       GYRO_data_group.rotate_quat.forEach((rotate_quat,a_idx)=>{
 
-        let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
 
         rotateInt.multiply(rotate_quat);
 
@@ -507,15 +540,24 @@ let GPMD={
         if(Counter%16==0)
         {
           let tmpQuat = new THREE.Quaternion();
-          let SS=GPMD.GetIDX_us(ACCL_data,"fuse_ACCL_MAGN_quat",time_us);
 
-          if(SS!=null)
+          if(ifLockGeoRef)
           {
-            tmpQuat.copy(SS.DL);
-            tmpQuat.slerp(SS.DH, SS.ratio);
+            let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
+            let SS=GPMD.GetIDX_us(ACCL_data,"fuse_ACCL_MAGN_quat",time_us);
 
-            rotateInt.slerp(tmpQuat,0.001);
+            if(SS!=null)
+            {
+              tmpQuat.copy(SS.DL);
+              tmpQuat.slerp(SS.DH, SS.ratio);
+
+              rotateInt.slerp(tmpQuat,alpha);
+            }
           }
+          else {
+            rotateInt.slerp(forwardQuat,alpha);
+          }
+
           tmpQuat.copy(rotateInt);
           GYRO_data_group.orientation_quat.push(tmpQuat);
         }
@@ -570,9 +612,10 @@ let GPMD={
           MAGN_data.push(STRM);
       });
     });
-    let DrawG=false;
+    let DrawG=true;
     GPMD.ProcessCALB(CALB_data);
-    GPMD.FuseGYRO_ACCL_MAGN(GYRO_data,ACCL_data,MAGN_data,CALB_data,DrawG);
+    let ifLockGeoRef=true;
+    GPMD.FuseGYRO_ACCL_MAGN(GYRO_data,ACCL_data,MAGN_data,CALB_data,ifLockGeoRef,DrawG);
     return GYRO_data;
   }
 
