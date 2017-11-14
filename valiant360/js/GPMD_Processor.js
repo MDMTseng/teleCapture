@@ -507,7 +507,7 @@ let GPMD={
 
     GPMD.ProcessGYRO(GYRO_data,CALB_data,Draw);
 
-    let alpha=0.01;
+    let alpha=0.0001;
     let rotateInt = new THREE.Quaternion(0,0,0,1);
 
     let forwardQuat= new THREE.Quaternion(0,0,0,1);
@@ -517,8 +517,11 @@ let GPMD={
 
       GPMD.ProcessACCL(ACCL_data,CALB_data,Draw);
       GPMD.ProcessMAGN(MAGN_data,CALB_data,Draw);
-      GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,Draw);
-      rotateInt.copy(ACCL_data[0].fuse_ACCL_MAGN_quat[0]);
+      //GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,Draw);
+
+      let quat=GPMD.ConvertUpNorthToQuaternion(
+        ACCL_data[0].up_vec[0],MAGN_data[0].north_vec[0]);
+      rotateInt.copy(quat);
     }
     else {
       /*var m = new THREE.Matrix4();
@@ -527,7 +530,8 @@ let GPMD={
 
     }
     //rotateInt.copy(CALB_data.ORNT);
-
+    let interp_Up=new THREE.Vector3();
+    let interp_North=new THREE.Vector3();
 
     let Counter=0;
     GYRO_data.forEach((GYRO_data_group,g_idx)=>{
@@ -545,15 +549,30 @@ let GPMD={
           if(ifLockGeoRef)
           {
             let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
-            let SS=GPMD.GetIDX_us(ACCL_data,"fuse_ACCL_MAGN_quat",time_us);
 
-            if(SS!=null)
+            let ACCL_SS=GPMD.GetIDX_us(ACCL_data,"up_vec",time_us);
+
+            let MAGN_SS=GPMD.GetIDX_us(MAGN_data,"north_vec",time_us);
+
+            if( ACCL_SS!=null && MAGN_SS!=null )
             {
-              tmpQuat.copy(SS.DL);
-              tmpQuat.slerp(SS.DH, SS.ratio);
 
-              rotateInt.slerp(tmpQuat,alpha);
+                interp_Up.copy(ACCL_SS.DL);
+                interp_Up.lerp(ACCL_SS.DH, ACCL_SS.ratio);
+                interp_North.copy(MAGN_SS.DL);
+                interp_North.lerp(MAGN_SS.DH, MAGN_SS.ratio);
+
+                tmpQuat.copy(rotateInt);
+                tmpQuat.inverse();
+                var vector = new THREE.Vector3( 0, 0, 1 );
+                vector.applyQuaternion( tmpQuat );
+
+                interp_Up.lerp(vector, 0.5);
+
+                let quat=GPMD.ConvertUpNorthToQuaternion(interp_Up,interp_North);
+                rotateInt.slerp(quat,alpha);
             }
+
           }
           else {
             rotateInt.slerp(forwardQuat,alpha);
