@@ -1,5 +1,6 @@
 
 let ifshowEuler=true;
+var GPS_data = [];
 
 let DrawVectorGraph=(data_set,x,y,width,ValueScale=1)=>{
 
@@ -64,7 +65,7 @@ let DrawXAxis=(x,y,color_str='#000000')=>
 let GPMD={
   func1:()=>{
     quat1 = new THREE.Quaternion();
-    console.log(quat1)
+    // console.log(quat1)
   },
   findRealGroupIdx:(IMU_data,dataType_str,group,idx)=>{
     if(group>=IMU_data.length)
@@ -310,7 +311,7 @@ let GPMD={
 
         });
       });
-      DrawVectorGraph(ori_quat,0,400,1000,30);
+      // DrawVectorGraph(ori_quat,0,400,1000,30);
     }
 
     //console.log(GYRO_data);
@@ -351,7 +352,7 @@ let GPMD={
           ACCL_ARR.push(up_vec);
         });
       });
-      DrawVectorGraph(ACCL_ARR,0,100,1000,2);
+      // DrawVectorGraph(ACCL_ARR,0,100,1000,2);
     }
 
   },
@@ -400,7 +401,7 @@ let GPMD={
           MAGN_ARR.push(north_vec);
         });
       });
-      DrawVectorGraph(MAGN_ARR,0,200,1000,2);
+      // DrawVectorGraph(MAGN_ARR,0,200,1000,2);
     }
     //console.log(">>>>>>>>>>",GPMD.GetTimeDiff_us(ACCL_data,"EULER",ACCL_data.length-1,147));
 
@@ -498,7 +499,7 @@ let GPMD={
           }
         });
       });
-      DrawVectorGraph(FUSE_ARR,0,600,1000,30);
+      // DrawVectorGraph(FUSE_ARR,0,600,1000,30);
     }
     //console.log(dataArr);
   },
@@ -584,7 +585,7 @@ let GPMD={
         ori_quat.push(eulerX);
 
       }
-      DrawVectorGraph(ori_quat,0,800,1000,30);
+      // DrawVectorGraph(ori_quat,0,800,1000,30);
     }
 
   },
@@ -610,8 +611,13 @@ let GPMD={
           ACCL_data.push(STRM);
         else if(typeof( STRM.MAGN) != 'undefined')
           MAGN_data.push(STRM);
+        else if(typeof( STRM.GPS5) != 'undefined'){
+          GPS_data.push(STRM.GPS5);
+          // console.log(STRM);
+        }
       });
     });
+    // console.log(GPS_data);
     let DrawG=true;
     GPMD.ProcessCALB(CALB_data);
     let ifLockGeoRef=true;
@@ -664,6 +670,15 @@ let UTILITY={
           promise.resolve(obj);
       },
       reject:promise.reject
+    });
+  },
+  parseSensorData:(text)=>{
+    let md_arr = text.split("\n");
+    return md_arr.map(function(val, ndx) {
+      let sample = val.split(" ");
+      return sample.map(function(val1, ndx1) {
+        return parseInt(val1);
+      });
     });
   }
 
