@@ -33,7 +33,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		<h1 class="text-center mt-3"><i class="fa fa-fw fa-crosshairs"></i>360 no scopers</h1>
 
 	</nav>
-	<div class="container-fluid" style="background-color: #212F3D;height:900px">
+	<div class="container-fluid" style="background-color: #212F3D;height:700px">
 		<div class="row">
 			<div class="col-sm-12" style="
 			    height: 50px;
@@ -46,8 +46,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			</div>
 			<div class="col-sm-3">
 				<div id="map"></div>
-				<div class="row">
-					<h4 class="text-center mt-5"><i class="fa fa-fw fa-file"></i>Files to upload </h4>
+				<div class="row" style="opacity:0.01">
 					<label class="custom-file mt-3">
 					<input type="file" id="fileinput" class="custom-file-input" multiple @change="fetchJson">
 					<span class="custom-file-control"></span>
@@ -56,7 +55,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			</div>
 		</div>
 	</div>
-
+	<nav class="navbar navbar-default navbar-fixed-bottom " style="background-color: #000000;">
+			<div class="container">
+					<p class="navbar-text navbar-right" style="color: white;">GoPro, HERO, Karma, Session and their respective logos are trademarks or registered trademarks of GoPro, Inc. in the United States and other countries. © 2017. GoPro, Inc. All rights reserved.</p>
+			</div>
+	</nav>
 	<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
