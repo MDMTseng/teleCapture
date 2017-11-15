@@ -140,6 +140,7 @@ three.js r65 or higher
       flatProjection: false,
       autoplay: true,
       tc_videoOrientation: null,
+      tc_sensorOrientation: null,
       tc_curIdx: 0
     };
 
@@ -287,7 +288,7 @@ three.js r65 or higher
         this._video.addEventListener("progress", function() {
           var percent = null;
           if (self._video && self._video.buffered && self._video.buffered.length > 0 && self._video.buffered.end && self._video.duration) {
-            console.log("buffered.end(0)");
+            // console.log("buffered.end(0)");
             percent = self._video.buffered.end(0) / self._video.duration;
           }
           // Some browsers (e.g., FF3.6 and Safari 5) cannot calculate target.bufferered.end()
@@ -746,108 +747,150 @@ three.js r65 or higher
       this.render();
     },
     setOrientationData: function(orientation) {
-        console.log(this);
+        // console.log(this);
         this.options.tc_videoOrientation=orientation;
     },
-    render: function() {
-      if (typeof this._video != 'undefined' && this.options.frameUpdated && this.options.tc_videoOrientation !=null) {
-
-                  this._camera.useQuaternions = true;
-
-        /*this._lat=90*progress;
-        this._lon=180*progress;*/
-        {
-
-          let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
-
-
-
-          quat1 = new THREE.Quaternion(0,0,0,1);
-          quat2 = new THREE.Quaternion();
-          var m = new THREE.Matrix4();
-
-
-
-          m.makeRotationX ( -Math.PI/2);
-
-          quat1.setFromRotationMatrix(m);
-
-
-
-          quat2.copy(SS.DL);
-          quat2.slerp(SS.DH,SS.ratio);
-          quat2.inverse();
-          quat1.multiply(quat2);
-
-
-          m.set( 0,0,1,0,
-                 1,0,0,0,
-                 0,1,0,0,
-                 0,0,0,1, );
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-
-          m.makeRotationY ( -Math.PI);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-
-          m.makeRotationY ( this._lon * Math.PI / 180);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-
-          m.makeRotationX ( -this._lat * Math.PI / 180);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-          this._camera.quaternion.copy(quat1);
-
-
-
-
-
-        }
-      } else {
-        //console.log("NO Change");
-      }
-
-      if (this._camera.useQuaternions != true) {
-        this._lat = Math.max(-85, Math.min(85, this._lat));
-        this._phi = (90 - this._lat) * Math.PI / 180;
-        this._theta = this._lon * Math.PI / 180;
-        //phi=yaw theta=pitch
-        var cx = 500 * Math.sin(this._phi) * Math.cos(this._theta);
-        var cy = 500 * Math.cos(this._phi);
-        var cz = 500 * Math.sin(this._phi) * Math.sin(this._theta);
-
-        this._camera.lookAt(new THREE.Vector3(cx, cy, cz));
-
-        // distortion
-        if (this.options.flatProjection) {
-          this._camera.position.x = 0;
-          this._camera.position.y = 0;
-          this._camera.position.z = 0;
-        } else {
-          this._camera.position.x = -cx;
-          this._camera.position.y = -cy;
-          this._camera.position.z = -cz;
-        }
-      } else {
-        var ppp = new THREE.Vector3(0, 0, 500).applyQuaternion(this._camera.quaternion)
-        this._camera.position.x = ppp.x;
-        this._camera.position.y = ppp.y;
-        this._camera.position.z = ppp.z;
-      }
-
-      /*
-
-                  console.log(this._camera);
-      */
-      //console.log(this._scene);
-      this._renderer.clear();
-      this._renderer.render(this._scene, this._camera);
+    setSensorOrientation: function(orientation) {
+      this.options.tc_sensorOrientation=orientation;
     },
+    render: function() {
+  if (typeof this._video != 'undefined' && this.options.frameUpdated && this.options.tc_videoOrientation !=null) {
+
+              this._camera.useQuaternions = true;
+
+    /*this._lat=90*progress;
+    this._lon=180*progress;*/
+    {
+      let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
+
+      quat1 = new THREE.Quaternion(0,0,0,1);
+      quat2 = new THREE.Quaternion();
+      var m = new THREE.Matrix4();
+
+      m.makeRotationX ( -Math.PI/2);
+      quat1.setFromRotationMatrix(m);
+
+      // Camera offset
+      quat2.copy(SS.DL);
+      quat2.slerp(SS.DH,SS.ratio);
+      quat2.inverse();
+      quat1.multiply(quat2);
+
+      let sens_arr = this.options.tc_sensorOrientation;
+
+
+      let idx_L,idx_H,idx_ratio;
+      if(false)//Use time tag(jitter issue)
+      {
+        let currentTime_us=(this._video.currentTime)*1000000;
+        idx_L=0;
+        for( idx_L=0;idx_L<sens_arr.length;idx_L++)
+        {
+            if(sens_arr[idx_L][1]>currentTime_us)
+            {
+              idx_L--;
+              break;
+            }
+
+        }
+        idx_H=idx_L+1;
+        idx_ratio=(currentTime_us-sens_arr[idx_L][1])/
+                      (sens_arr[idx_H][1]-sens_arr[idx_L][1]);
+      }
+      else//Evenly sample the Data
+      {
+        let tmp_idx=sens_arr.length*this._video.currentTime/this._video.duration;
+        idx_L=Math.floor(tmp_idx);
+        idx_H=idx_L+1;
+        idx_ratio=(tmp_idx-idx_L)/
+                      (idx_H-idx_L);
+      }
+
+
+
+      let quat_data_L=sens_arr[idx_L];
+      let quat_L = new THREE.Quaternion(quat_data_L[3], quat_data_L[4], quat_data_L[5], quat_data_L[2]);
+      let quat_data_H=sens_arr[idx_H];
+      let quat_H = new THREE.Quaternion(quat_data_H[3], quat_data_H[4], quat_data_H[5], quat_data_H[2]);
+
+      quat_L.normalize();
+      quat_H.normalize();
+      quat_L.slerp(quat_H,idx_ratio);
+
+      quat_L.normalize();
+      quat1.multiply(quat_L);
+
+
+
+      m.set( 0,0,1,0,
+             1,0,0,0,
+             0,1,0,0,
+             0,0,0,1, );
+      quat2.setFromRotationMatrix(m);
+      quat1.multiply(quat2);
+
+
+
+      m.makeRotationY ( -Math.PI);
+      quat2.setFromRotationMatrix(m);
+      quat1.multiply(quat2);
+
+/*
+      m.makeRotationY ( this._lon * Math.PI / 180);
+      quat2.setFromRotationMatrix(m);
+      quat1.multiply(quat2);
+
+
+      m.makeRotationX ( -this._lat * Math.PI / 180);
+      quat2.setFromRotationMatrix(m);
+      quat1.multiply(quat2);*/
+      this._camera.quaternion.copy(quat1);
+
+
+
+
+
+    }
+  } else {
+    //console.log("NO Change");
+  }
+
+  if (this._camera.useQuaternions != true) {
+    this._lat = Math.max(-85, Math.min(85, this._lat));
+    this._phi = (90 - this._lat) * Math.PI / 180;
+    this._theta = this._lon * Math.PI / 180;
+    //phi=yaw theta=pitch
+    var cx = 500 * Math.sin(this._phi) * Math.cos(this._theta);
+    var cy = 500 * Math.cos(this._phi);
+    var cz = 500 * Math.sin(this._phi) * Math.sin(this._theta);
+
+    this._camera.lookAt(new THREE.Vector3(cx, cy, cz));
+
+    // distortion
+    if (this.options.flatProjection) {
+      this._camera.position.x = 0;
+      this._camera.position.y = 0;
+      this._camera.position.z = 0;
+    } else {
+      this._camera.position.x = -cx;
+      this._camera.position.y = -cy;
+      this._camera.position.z = -cz;
+    }
+  } else {
+    var ppp = new THREE.Vector3(0, 0, 500).applyQuaternion(this._camera.quaternion)
+    this._camera.position.x = ppp.x;
+    this._camera.position.y = ppp.y;
+    this._camera.position.z = ppp.z;
+  }
+
+  /*
+
+              console.log(this._camera);
+  */
+  //console.log(this._scene);
+  this._renderer.clear();
+  this._renderer.render(this._scene, this._camera);
+},
 
     // Video specific functions, exposed to controller
     play: function() {
