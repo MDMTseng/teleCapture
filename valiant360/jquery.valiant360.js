@@ -10,6 +10,9 @@
 var playerv360=[];
 
 offsetT_Target = -0.026;
+g_OBJX = {
+  quat_tmp1:new THREE.Quaternion(0,0,0,1)
+};
 
 var Detector = {
 
@@ -776,51 +779,108 @@ three.js r65 or higher
       quat2.inverse();
       quat1.multiply(quat2);
 
-      let sens_arr = this.options.tc_sensorOrientation;
 
 
-      let idx_L,idx_H,idx_ratio;
-      if(false)//Use time tag(jitter issue)
+      if(true)
       {
-        let currentTime_us=(this._video.currentTime)*1000000;
-        idx_L=0;
-        for( idx_L=0;idx_L<sens_arr.length;idx_L++)
+        let sens_arr = this.options.tc_sensorOrientation;
+
+
+        let idx_L,idx_H,idx_ratio;
+        if(false)//Use time tag(jitter issue)
         {
-            if(sens_arr[idx_L][1]>currentTime_us)
-            {
-              idx_L--;
-              break;
-            }
+          let currentTime_us=(this._video.currentTime)*1000000;
+          idx_L=0;
+          for( idx_L=0;idx_L<sens_arr.length;idx_L++)
+          {
+              if(sens_arr[idx_L][1]>currentTime_us)
+              {
+                idx_L--;
+                break;
+              }
+
+          }
+          idx_H=idx_L+1;
+          idx_ratio=(currentTime_us-sens_arr[idx_L][1])/
+                        (sens_arr[idx_H][1]-sens_arr[idx_L][1]);
+        }
+        else//Evenly sample the Data
+        {
+
+
+          /*let tmp_idx=(this._video.currentTime+4)*15;
+
+          if(tmp_idx>=0)
+          {
+
+
+            idx_L=Math.floor(tmp_idx);
+            idx_H=idx_L+1;
+            idx_ratio=(tmp_idx-idx_L)/
+                          (idx_H-idx_L);
+          }
+          else {
+            idx_L=0;
+            idx_H=idx_L+1;
+            idx_ratio=0;
+          }*/
+          let tmp_idx=sens_arr.length*(this._video.currentTime+1.3)/this._video.duration;
+          idx_L=Math.floor(tmp_idx);
+          idx_H=idx_L+1;
+          idx_ratio=(tmp_idx-idx_L)/
+                        (idx_H-idx_L);
+
+
+
 
         }
-        idx_H=idx_L+1;
-        idx_ratio=(currentTime_us-sens_arr[idx_L][1])/
-                      (sens_arr[idx_H][1]-sens_arr[idx_L][1]);
+
+
+
+        let quat_data_L=sens_arr[idx_L];
+        let quat_L = new THREE.Quaternion(quat_data_L[3], quat_data_L[4], quat_data_L[5], quat_data_L[2]);
+        let quat_data_H=sens_arr[idx_H];
+        let quat_H = new THREE.Quaternion(quat_data_H[3], quat_data_H[4], quat_data_H[5], quat_data_H[2]);
+
+        quat_L.normalize();
+        quat_H.normalize();
+        quat_L.slerp(quat_H,idx_ratio);
+
+        quat_L.normalize();
+
+
+        g_OBJX.quat_tmp1.slerp(quat_L,0.04);
+
+
+        if(true)
+        {
+
+          let eulerX = new THREE.Euler();
+          eulerX.setFromQuaternion(g_OBJX.quat_tmp1);
+          //quat1.multiply(g_OBJX.quat_tmp1);
+          console.log(eulerX.z);
+          m.makeRotationZ (-eulerX.z+Math.PI);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
+
+        }
+        else {
+
+          quat1.multiply(g_OBJX.quat_tmp1);
+          m.makeRotationX ( -Math.PI);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
+
+          m.makeRotationZ ( -Math.PI);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
+
+          m.makeRotationY ( Math.PI/10);
+          quat2.setFromRotationMatrix(m);
+          quat1.multiply(quat2);
+
+        }
       }
-      else//Evenly sample the Data
-      {
-        let tmp_idx=sens_arr.length*this._video.currentTime/this._video.duration;
-        idx_L=Math.floor(tmp_idx);
-        idx_H=idx_L+1;
-        idx_ratio=(tmp_idx-idx_L)/
-                      (idx_H-idx_L);
-      }
-
-
-
-      let quat_data_L=sens_arr[idx_L];
-      let quat_L = new THREE.Quaternion(quat_data_L[3], quat_data_L[4], quat_data_L[5], quat_data_L[2]);
-      let quat_data_H=sens_arr[idx_H];
-      let quat_H = new THREE.Quaternion(quat_data_H[3], quat_data_H[4], quat_data_H[5], quat_data_H[2]);
-
-      quat_L.normalize();
-      quat_H.normalize();
-      quat_L.slerp(quat_H,idx_ratio);
-
-      quat_L.normalize();
-      quat1.multiply(quat_L);
-
-
 
       m.set( 0,0,1,0,
              1,0,0,0,
