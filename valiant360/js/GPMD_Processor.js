@@ -507,16 +507,16 @@ let GPMD={
 
     GPMD.ProcessGYRO(GYRO_data,CALB_data,Draw);
 
-    let alpha=0.0001;
+    let alpha=0.003;
     let rotateInt = new THREE.Quaternion(0,0,0,1);
 
     let forwardQuat= new THREE.Quaternion(0,0,0,1);
 
+    GPMD.ProcessACCL(ACCL_data,CALB_data,Draw);
     if(ifLockGeoRef)
     {
-
-      GPMD.ProcessACCL(ACCL_data,CALB_data,Draw);
       GPMD.ProcessMAGN(MAGN_data,CALB_data,Draw);
+
       //GPMD.FuseACCL_MAGN(ACCL_data,MAGN_data,Draw);
 
       let quat=GPMD.ConvertUpNorthToQuaternion(
@@ -546,19 +546,22 @@ let GPMD={
         {
           let tmpQuat = new THREE.Quaternion();
 
+          let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
+          let ACCL_SS=GPMD.GetIDX_us(ACCL_data,"up_vec",time_us);
+          if( ACCL_SS!=null)
+          {
+            interp_Up.copy(ACCL_SS.DL);
+            interp_Up.lerp(ACCL_SS.DH, ACCL_SS.ratio);
+          }
           if(ifLockGeoRef)
           {
-            let time_us=GPMD.GetDataTimePoint_us(GYRO_data,'rotate_quat',g_idx,a_idx);
 
-            let ACCL_SS=GPMD.GetIDX_us(ACCL_data,"up_vec",time_us);
 
             let MAGN_SS=GPMD.GetIDX_us(MAGN_data,"north_vec",time_us);
 
             if( ACCL_SS!=null && MAGN_SS!=null )
             {
 
-                interp_Up.copy(ACCL_SS.DL);
-                interp_Up.lerp(ACCL_SS.DH, ACCL_SS.ratio);
                 interp_North.copy(MAGN_SS.DL);
                 interp_North.lerp(MAGN_SS.DH, MAGN_SS.ratio);
 
@@ -575,7 +578,18 @@ let GPMD={
 
           }
           else {
-            rotateInt.slerp(forwardQuat,alpha);
+            interp_North.x=1;
+            interp_North.y=0;
+            interp_North.z=0;
+
+            tmpQuat.copy(rotateInt);
+            tmpQuat.inverse();
+            var vector = new THREE.Vector3( 0, 0, 1 );
+            vector.applyQuaternion( tmpQuat );
+
+            interp_Up.lerp(vector, 0.5);
+            let quat=GPMD.ConvertUpNorthToQuaternion(interp_Up,interp_North);
+            rotateInt.slerp(quat,alpha);
           }
 
           tmpQuat.copy(rotateInt);
@@ -639,7 +653,7 @@ let GPMD={
     // console.log(GPS_data);
     let DrawG=true;
     GPMD.ProcessCALB(CALB_data);
-    let ifLockGeoRef=true;
+    let ifLockGeoRef=false;
     GPMD.FuseGYRO_ACCL_MAGN(GYRO_data,ACCL_data,MAGN_data,CALB_data,ifLockGeoRef,DrawG);
     return GYRO_data;
   }

@@ -26,13 +26,13 @@ var vm=new Vue({
 
       UTILITY.ajax_fix_gpmf2json("GET", json_path,{
         resolve:(data)=>{
-          UTILITY.fetch_txt("GET", meta_path, {
+          /*UTILITY.fetch_txt("GET", meta_path, {
             resolve:(data)=>{
               let sensorData;
               sensorData = UTILITY.parseSensorData(data);
               playerv360[0].setSensorOrientation(sensorData);
             }
-          });
+          });*/
           metadata=GPMD.extractIMUData(data);
           console.log(metadata);
 

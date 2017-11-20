@@ -781,7 +781,7 @@ three.js r65 or higher
 
 
 
-      if(true)
+      if(false)
       {
         let sens_arr = this.options.tc_sensorOrientation;
 
@@ -895,7 +895,7 @@ three.js r65 or higher
       quat2.setFromRotationMatrix(m);
       quat1.multiply(quat2);
 
-/*
+
       m.makeRotationY ( this._lon * Math.PI / 180);
       quat2.setFromRotationMatrix(m);
       quat1.multiply(quat2);
@@ -903,7 +903,9 @@ three.js r65 or higher
 
       m.makeRotationX ( -this._lat * Math.PI / 180);
       quat2.setFromRotationMatrix(m);
-      quat1.multiply(quat2);*/
+      quat1.multiply(quat2);
+
+
       this._camera.quaternion.copy(quat1);
 
 
