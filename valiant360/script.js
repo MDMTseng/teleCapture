@@ -11,15 +11,16 @@ var vm=new Vue({
       var mp4_path = null;
       for (var i = 0; i < files.length; ++i){
         if (files[i].name.match(/json/i) != null) {
-          var json_path = "data/" + files[i].name;
+          var json_path = URL.createObjectURL(files[i]);
           console.log(json_path);
         }
         else if (files[i].name.match(/META/i) != null) {
-          var meta_path = "data/" + files[i].name;
+          var meta_path = URL.createObjectURL(files[i]);
           console.log(meta_path);
         }
         else {
-          var mp4_path = "data/" + files[i].name;
+          var fileURL = URL.createObjectURL(files[i])
+          var mp4_path = fileURL;
           console.log(mp4_path);
         }
       }
