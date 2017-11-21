@@ -9,9 +9,10 @@
 
 var playerv360=[];
 
-offsetT_Target = -0.026;
+offsetT_Target = -0.020;
 g_OBJX = {
-  quat_tmp1:new THREE.Quaternion(0,0,0,1)
+  quat_tmp1:new THREE.Quaternion(0,0,0,1),
+  fov_tmp1:1
 };
 
 var Detector = {
@@ -144,7 +145,10 @@ three.js r65 or higher
       autoplay: true,
       tc_videoOrientation: null,
       tc_sensorOrientation: null,
-      tc_curIdx: 0
+      tc_curIdx: 0,
+      tc_overCapTimeLine: [],
+      tc_cur_usr_orient:new THREE.Quaternion(),
+      tc_play_usr_orient:false
     };
 
   // The actual plugin constructor
@@ -621,6 +625,47 @@ three.js r65 or higher
         });
         this.element.dispatchEvent(pressEvent);
       }
+      else {
+        switch(keyCode)
+        {
+          case 32://space
+            if(this._video.paused)
+            {
+              this._video.play();
+              console.log("Play");
+            }
+            else {
+              this._video.pause();
+              console.log("Pause");
+            }
+          break;
+          case 65://a
+
+            let obj={
+              t:this._video.currentTime,
+              fov:this._fov,
+              quat:new THREE.Quaternion()
+            }
+            obj.quat.copy(this.options.tc_cur_usr_orient);
+
+            let insertP=this.timeline_search(this.options.tc_overCapTimeLine,obj.t);
+
+            this.options.tc_overCapTimeLine.splice(insertP.idx_L+1, 0,obj);
+            console.log("Add 1 key frame at idx:", insertP.idx_L+1);
+            console.log(obj);
+          break;
+          case 88://x
+            this.options.tc_play_usr_orient=!this.options.tc_play_usr_orient;
+            if(this.options.tc_play_usr_orient)
+            {
+              console.log("Play reframe mode");
+            }
+            else {
+              console.log("Edit mode mode");
+            }
+          break;
+        }
+      }
     },
 
     onKeyUp: function(event) {
@@ -756,6 +801,46 @@ three.js r65 or higher
     },
     setSensorOrientation: function(orientation) {
       this.options.tc_sensorOrientation=orientation;
+    },
+    timeline_search: function(timeline_arr,time) {
+      let i=0;
+      for( i=0 ; i<timeline_arr.length ; i++ )
+      {
+        if(timeline_arr[i].t>time)
+        {
+          break;
+        }
+      }
+      let result={
+        idx_L:-1,
+        DH:null,
+        DL:null,
+        ratio:0
+      };
+      if(timeline_arr.length==0)return result;
+
+      if(i == timeline_arr.length)
+      {
+        result.DH=timeline_arr[i-1];
+        result.DL=result.DH;
+        result.ratio=0;
+        result.idx_L=i-1;
+        return result;
+      }
+      else if(i == 0 )
+      {
+        result.DH=timeline_arr[0];
+        result.DL=result.DH;
+        result.ratio=0;
+        result.idx_L=0;
+        return result;
+      }
+
+      result.DH=timeline_arr[i];
+      result.DL=timeline_arr[i-1];
+      result.idx_L=i-1;
+      result.ratio=(time-result.DL.t)/(result.DH.t-result.DL.t);
+      return result;
     },
     render: function() {
   if (typeof this._video != 'undefined' && this.options.frameUpdated && this.options.tc_videoOrientation !=null) {
@@ -897,17 +982,38 @@ three.js r65 or higher
       quat1.multiply(quat2);
 
 
-      m.makeRotationY ( this._lon * Math.PI / 180);
-      quat2.setFromRotationMatrix(m);
-      quat1.multiply(quat2);
-
-
-      m.makeRotationX ( -this._lat * Math.PI / 180);
-      quat2.setFromRotationMatrix(m);
-      quat1.multiply(quat2);
-
+      if(this.options.tc_play_usr_orient)
+      {
+        let S=this.timeline_search(this.options.tc_overCapTimeLine,this._video.currentTime);
+        if(S.DH != null && S.DL != null)
+        {
+          let alpha=0.02;
+          quat2.copy(S.DL.quat);
+          quat2.slerp(S.DH.quat,S.ratio);
+          g_OBJX.quat_tmp1.slerp(quat2,alpha);
+          quat1.multiply(g_OBJX.quat_tmp1);
+          let tar_fov=(S.DH.fov-S.DL.fov)*S.ratio+S.DL.fov;
+          g_OBJX.fov_tmp1+=(tar_fov-g_OBJX.fov_tmp1)*alpha;
+          this._camera.setLens(g_OBJX.fov_tmp1);
+        }
+      }
+      else {
+        m.makeRotationY ( this._lon * Math.PI / 180);
+        this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
+        m.makeRotationX ( -this._lat * Math.PI / 180);
+        quat2.setFromRotationMatrix(m);
+        this.options.tc_cur_usr_orient.multiply(quat2);
+        quat1.multiply(this.options.tc_cur_usr_orient);
+        this._camera.setLens(this._fov );
+      }
 
       this._camera.quaternion.copy(quat1);
+
+
+
+
+
+
 
 
 
