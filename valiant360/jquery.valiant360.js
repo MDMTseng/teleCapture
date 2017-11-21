@@ -723,9 +723,9 @@ three.js r65 or higher
           }
           if (typeof(this._testcanvas) !== "undefined") {
             ctx = this._testcanvas.getContext('2d');
-            ctx.drawImage(this._video, 0, 0, 50, 50);
-            var data1 = ctx.getImageData(0, 0, 50, 50).data;
-            this.options.frameUpdated = false;
+            ctx.drawImage(this._video, 0, 0, 5, 5);
+            var data1 = ctx.getImageData(0, 0, 5, 5).data;
+            /*this.options.frameUpdated = false;
             if (typeof(this._testDiffData) != "undefined") {
               for (idx = 0; idx < data1.length; idx += 3) {
                 if (idx % 4 == 3) idx--;
@@ -734,7 +734,8 @@ three.js r65 or higher
                   break;
                 }
               }
-            }
+            }*/
+            this.options.frameUpdated = true;
             this._testDiffData = data1;
 
             var ct = new Date().getTime();
