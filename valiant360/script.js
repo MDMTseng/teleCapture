@@ -1,8 +1,9 @@
 var vm=new Vue({
-  el: '#fileinput',
+  el: '#app',
   data: {
     metadata:null,
-    fetching_lock:false
+    fetching_lock:false,
+    directorCut_config:"{}"
   },
   methods: {
     fetchJson:(e)=>{
@@ -97,3 +98,10 @@ vm.$watch('message', function (newVal, oldVal) {
   // console.log(newVal,"\n>",oldVal);
   // this callback will be called when `vm.a` changes
 })
+
+let UI_Bridge={
+  Set_directorCut_config:(dirC_conf)=>{
+    console.log(vm);
+    vm.$set(vm, 'directorCut_config', dirC_conf)
+  }
+}

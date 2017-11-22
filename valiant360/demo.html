@@ -33,25 +33,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		<h1 class="text-center mt-3"><i class="fa fa-fw fa-crosshairs"></i>360 no scopers</h1>
 
 	</nav>
-	<div class="container-fluid" style="background-color: #212F3D;height:700px">
+	<div class="container-fluid"   id="app" style="background-color: #212F3D;height:800px">
 		<div class="row">
-			<div class="col-sm-12" style="
-			    height: 50px;
-			"></div>
+			<div class="col-sm-12" style="height: 50px;"></div>
 			<div class="col-sm-1"></div>
 			<div class="col-sm-7">
 				<div id="app">
-					<div class="valiantPhoto mt-5" data-video-src="VIDEO_0023_yaw0.mp4" style="width: 100%; height: 480px;"></div>
+					<div class="valiantPhoto" data-video-src="VIDEO_0023_yaw0.mp4" style="width: 100%; height: 480px;"></div>
 				</div>
 			</div>
 			<div class="col-sm-3">
+				<input type="file" style="height:10%" multiple @change="fetchJson">
+				<textarea v-model="directorCut_config" placeholder="add multiple lines" style="font-size: 9px;height: 90%;width: 100%;"></textarea>
+			</div>
+			<div class="col-sm-12" style="height: 50px;"></div>
+			<div class="col-sm-12" style="height:200px">
 				<div id="map"></div>
-				<div class="row" style="opacity:0.01">
-					<label class="custom-file mt-3">
-					<input type="file" id="fileinput" class="custom-file-input" multiple @change="fetchJson">
-					<span class="custom-file-control"></span>
-					</label>
-				</div>
 			</div>
 		</div>
 	</div>

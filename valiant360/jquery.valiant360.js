@@ -146,7 +146,7 @@ three.js r65 or higher
       tc_videoOrientation: null,
       tc_sensorOrientation: null,
       tc_curIdx: 0,
-      tc_overCapTimeLine: [],
+      tc_overCapTimeLine: {timeline:[]},
       tc_cur_usr_orient:new THREE.Quaternion(),
       tc_play_usr_orient:false
     };
@@ -615,7 +615,9 @@ three.js r65 or higher
       this._mouseDown = false;
     },
 
+
     onKeyDown: function(event) {
+      event.preventDefault();
       var keyCode = event.keyCode;
       if (keyCode >= 37 && keyCode <= 40) {
         event.preventDefault();
@@ -648,12 +650,25 @@ three.js r65 or higher
               quat:new THREE.Quaternion()
             }
             obj.quat.copy(this.options.tc_cur_usr_orient);
+            obj.t=obj.t.toFixed(3)/1;
+            obj.fov=obj.fov.toFixed(1)/1;
+            obj.quat._x=obj.quat._x.toFixed(3)/1;
+            obj.quat._y=obj.quat._y.toFixed(3)/1;
+            obj.quat._z=obj.quat._z.toFixed(3)/1;
+            obj.quat._w=obj.quat._w.toFixed(3)/1;
 
-            let insertP=this.timeline_search(this.options.tc_overCapTimeLine,obj.t);
 
-            this.options.tc_overCapTimeLine.splice(insertP.idx_L+1, 0,obj);
+            let insertP=this.timeline_search(this.options.tc_overCapTimeLine.timeline,obj.t);
+
+            this.options.tc_overCapTimeLine.timeline.splice(insertP.idx_L+1, 0,obj);
             console.log("Add 1 key frame at idx:", insertP.idx_L+1);
-            console.log(obj);
+
+            let str=JSON.stringify(this.options.tc_overCapTimeLine);
+            var newline = String.fromCharCode(13, 10);
+            str=str.replace(/,\{/g,'\n,{');
+            console.log(str);
+            UI_Bridge.Set_directorCut_config(str);
+
           break;
           case 88://x
             this.options.tc_play_usr_orient=!this.options.tc_play_usr_orient;
@@ -822,6 +837,7 @@ three.js r65 or higher
 
       if(i == timeline_arr.length)
       {
+        console.log("aasas");
         result.DH=timeline_arr[i-1];
         result.DL=result.DH;
         result.ratio=0;
@@ -833,7 +849,7 @@ three.js r65 or higher
         result.DH=timeline_arr[0];
         result.DL=result.DH;
         result.ratio=0;
-        result.idx_L=0;
+        result.idx_L=-1;
         return result;
       }
 
@@ -989,13 +1005,17 @@ three.js r65 or higher
 
           if(this.options.tc_play_usr_orient)
           {
-            let S=this.timeline_search(this.options.tc_overCapTimeLine,this._video.currentTime);
+            let S=this.timeline_search(this.options.tc_overCapTimeLine.timeline,this._video.currentTime);
             if(S.DH != null && S.DL != null)
             {
               let alpha=0.02;
               quat2.copy(S.DL.quat);
               quat2.slerp(S.DH.quat,S.ratio);
+              quat2.normalize();
               g_OBJX.quat_tmp1.slerp(quat2,alpha);
+
+
+
               quat1.multiply(g_OBJX.quat_tmp1);
               let tar_fov=(S.DH.fov-S.DL.fov)*S.ratio+S.DL.fov;
               g_OBJX.fov_tmp1+=(tar_fov-g_OBJX.fov_tmp1)*alpha;
