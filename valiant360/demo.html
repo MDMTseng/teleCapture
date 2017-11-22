@@ -18,31 +18,32 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
 	<!-- Valiant360 control styles -->
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
 	<link rel="stylesheet" type="text/css" href="css/valiant360.css" />
 	<link rel="stylesheet" type="text/css" href="css/template.css" />
 
+	<link rel="stylesheet" type="text/css" href="css/basis.css" />
 </head>
 
-<body>
-	<nav class="navbar navbar-toggleable-md navbar-light" style="background-color: #000000;">
-		<a class="navbar-brand" href="#">
-	    <img src="images/GoPro_Logo1.png" width="15%" height="15%" alt="">
+<body class="blockS"  id="app">
+	<div class="HX1 black">
+		<a class="width2 veleY" href="#">
+	    <img src="images/GoPro_Logo1.png" alt="">
 	  </a>
 
-		<h1 class="text-center mt-3"><i class="fa fa-fw fa-crosshairs"></i>360 no scopers</h1>
+		<h1 class="width2 height12 vbox floatRight">360 no scopers</h1>
 
-	</nav>
-	<div class="container-fluid" style="background-color: #212F3D;height:700px">
+	</div>
+
+	<div class="valiantPhoto height6" data-video-src="" style="width:800px"></div>
+
+	<input type="file" id="fileinput" class="custom-file-input" multiple @change="fetchJson">
+	<!--div class="container-fluid" style="background-color: #212F3D;height:700px">
 		<div class="row">
 			<div class="col-sm-12" style="
 			    height: 50px;
 			"></div>
 			<div class="col-sm-1"></div>
 			<div class="col-sm-7">
-				<div id="app">
-					<div class="valiantPhoto mt-5" data-video-src="VIDEO_0023_yaw0.mp4" style="width: 100%; height: 480px;"></div>
-				</div>
 			</div>
 			<div class="col-sm-3">
 				<div id="map"></div>
@@ -54,7 +55,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				</div>
 			</div>
 		</div>
-	</div>
+	</div-->
+	<textarea v-model="message" style="width: 100%;margin-top: 0px;margin-bottom: 0px;height: 285px;"></textarea>
 	<nav class="navbar navbar-default navbar-fixed-bottom " style="background-color: #000000;">
 			<div class="container">
 					<p class="navbar-text navbar-right" style="color: white;">GoPro, HERO, Karma, Session and their respective logos are trademarks or registered trademarks of GoPro, Inc. in the United States and other countries. © 2017. GoPro, Inc. All rights reserved.</p>
