@@ -194,6 +194,7 @@ three.js r65 or higher
 
       this._lat = this.options.lat;
       this._lon = this.options.lon;
+      this._roll = 0;
       this._fov = this.options.fov;
 
       // save our original height and width for returning from fullscreen
@@ -696,11 +697,11 @@ three.js r65 or higher
             break;
             //Arrow up
           case 38:
-            this._lat += offset;
+            this._roll += offset;
             break;
             //Arrow down
           case 40:
-            this._lat -= offset;
+            this._roll -= offset;
             break;
         }
         console.log(offsetT_Target);
@@ -843,223 +844,214 @@ three.js r65 or higher
       return result;
     },
     render: function() {
-  if (typeof this._video != 'undefined' && this.options.frameUpdated && this.options.tc_videoOrientation !=null) {
+      if (typeof this._video != 'undefined' && this.options.frameUpdated) {
 
-              this._camera.useQuaternions = true;
+                  this._camera.useQuaternions = true;
 
-    /*this._lat=90*progress;
-    this._lon=180*progress;*/
-    {
-      let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
-
-      quat1 = new THREE.Quaternion(0,0,0,1);
-      quat2 = new THREE.Quaternion();
-      var m = new THREE.Matrix4();
-
-      m.makeRotationX ( -Math.PI/2);
-      quat1.setFromRotationMatrix(m);
-
-      // Camera offset
-      quat2.copy(SS.DL);
-      quat2.slerp(SS.DH,SS.ratio);
-      quat2.inverse();
-      quat1.multiply(quat2);
-
-
-
-      if(false)
-      {
-        let sens_arr = this.options.tc_sensorOrientation;
-
-
-        let idx_L,idx_H,idx_ratio;
-        if(false)//Use time tag(jitter issue)
+        /*this._lat=90*progress;
+        this._lon=180*progress;*/
         {
-          let currentTime_us=(this._video.currentTime)*1000000;
-          idx_L=0;
-          for( idx_L=0;idx_L<sens_arr.length;idx_L++)
-          {
-              if(sens_arr[idx_L][1]>currentTime_us)
-              {
-                idx_L--;
-                break;
-              }
 
+          quat1 = new THREE.Quaternion(0,0,0,1);
+          quat2 = new THREE.Quaternion();
+          var m = new THREE.Matrix4();
+
+          if(this.options.tc_videoOrientation!=null)
+          {
+            let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
+            m.makeRotationX ( -Math.PI/2);
+            quat1.setFromRotationMatrix(m);
+
+            // Camera offset
+            quat2.copy(SS.DL);
+            quat2.slerp(SS.DH,SS.ratio);
+            quat2.inverse();
+            quat1.multiply(quat2);
           }
-          idx_H=idx_L+1;
-          idx_ratio=(currentTime_us-sens_arr[idx_L][1])/
-                        (sens_arr[idx_H][1]-sens_arr[idx_L][1]);
-        }
-        else//Evenly sample the Data
-        {
 
 
-          /*let tmp_idx=(this._video.currentTime+4)*15;
-
-          if(tmp_idx>=0)
+          if(false)
           {
+            let sens_arr = this.options.tc_sensorOrientation;
 
 
-            idx_L=Math.floor(tmp_idx);
-            idx_H=idx_L+1;
-            idx_ratio=(tmp_idx-idx_L)/
-                          (idx_H-idx_L);
+            let idx_L,idx_H,idx_ratio;
+            if(false)//Use time tag(jitter issue)
+            {
+              let currentTime_us=(this._video.currentTime)*1000000;
+              idx_L=0;
+              for( idx_L=0;idx_L<sens_arr.length;idx_L++)
+              {
+                  if(sens_arr[idx_L][1]>currentTime_us)
+                  {
+                    idx_L--;
+                    break;
+                  }
+
+              }
+              idx_H=idx_L+1;
+              idx_ratio=(currentTime_us-sens_arr[idx_L][1])/
+                            (sens_arr[idx_H][1]-sens_arr[idx_L][1]);
+            }
+            else//Evenly sample the Data
+            {
+
+
+              /*let tmp_idx=(this._video.currentTime+4)*15;
+
+              if(tmp_idx>=0)
+              {
+
+
+                idx_L=Math.floor(tmp_idx);
+                idx_H=idx_L+1;
+                idx_ratio=(tmp_idx-idx_L)/
+                              (idx_H-idx_L);
+              }
+              else {
+                idx_L=0;
+                idx_H=idx_L+1;
+                idx_ratio=0;
+              }*/
+              let tmp_idx=sens_arr.length*(this._video.currentTime+1.3)/this._video.duration;
+              idx_L=Math.floor(tmp_idx);
+              idx_H=idx_L+1;
+              idx_ratio=(tmp_idx-idx_L)/
+                            (idx_H-idx_L);
+
+
+
+
+            }
+
+
+
+            let quat_data_L=sens_arr[idx_L];
+            let quat_L = new THREE.Quaternion(quat_data_L[3], quat_data_L[4], quat_data_L[5], quat_data_L[2]);
+            let quat_data_H=sens_arr[idx_H];
+            let quat_H = new THREE.Quaternion(quat_data_H[3], quat_data_H[4], quat_data_H[5], quat_data_H[2]);
+
+            quat_L.normalize();
+            quat_H.normalize();
+            quat_L.slerp(quat_H,idx_ratio);
+
+            quat_L.normalize();
+
+
+            g_OBJX.quat_tmp1.slerp(quat_L,0.04);
+
+
+            if(true)
+            {
+
+              let eulerX = new THREE.Euler();
+              eulerX.setFromQuaternion(g_OBJX.quat_tmp1);
+              //quat1.multiply(g_OBJX.quat_tmp1);
+              console.log(eulerX.z);
+              m.makeRotationZ (-eulerX.z+Math.PI);
+              quat2.setFromRotationMatrix(m);
+              quat1.multiply(quat2);
+
+            }
+            else {
+
+              quat1.multiply(g_OBJX.quat_tmp1);
+              m.makeRotationX ( -Math.PI);
+              quat2.setFromRotationMatrix(m);
+              quat1.multiply(quat2);
+
+              m.makeRotationZ ( -Math.PI);
+              quat2.setFromRotationMatrix(m);
+              quat1.multiply(quat2);
+
+              m.makeRotationY ( Math.PI/10);
+              quat2.setFromRotationMatrix(m);
+              quat1.multiply(quat2);
+
+            }
+          }
+          if(this.options.tc_videoOrientation!=null)
+          {
+            m.set( 0,0,1,0,
+                   1,0,0,0,
+                   0,1,0,0,
+                   0,0,0,1, );
+            quat2.setFromRotationMatrix(m);
+            quat1.multiply(quat2);
+
+
+
+            m.makeRotationY ( -Math.PI);
+            quat2.setFromRotationMatrix(m);
+            quat1.multiply(quat2);
+          }
+
+
+          if(this.options.tc_play_usr_orient)
+          {
+            let S=this.timeline_search(this.options.tc_overCapTimeLine,this._video.currentTime);
+            if(S.DH != null && S.DL != null)
+            {
+              let alpha=0.02;
+              quat2.copy(S.DL.quat);
+              quat2.slerp(S.DH.quat,S.ratio);
+              g_OBJX.quat_tmp1.slerp(quat2,alpha);
+              quat1.multiply(g_OBJX.quat_tmp1);
+              let tar_fov=(S.DH.fov-S.DL.fov)*S.ratio+S.DL.fov;
+              g_OBJX.fov_tmp1+=(tar_fov-g_OBJX.fov_tmp1)*alpha;
+              this._camera.setLens(g_OBJX.fov_tmp1);
+            }
           }
           else {
-            idx_L=0;
-            idx_H=idx_L+1;
-            idx_ratio=0;
-          }*/
-          let tmp_idx=sens_arr.length*(this._video.currentTime+1.3)/this._video.duration;
-          idx_L=Math.floor(tmp_idx);
-          idx_H=idx_L+1;
-          idx_ratio=(tmp_idx-idx_L)/
-                        (idx_H-idx_L);
+            m.makeRotationZ ( this._roll * Math.PI / 180);
+            this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
+
+
+            m.makeRotationY ( this._lon * Math.PI / 180);
+            quat2.setFromRotationMatrix(m);
+            this.options.tc_cur_usr_orient.multiply(quat2);
+
+            m.makeRotationX ( -this._lat * Math.PI / 180);
+            quat2.setFromRotationMatrix(m);
+            this.options.tc_cur_usr_orient.multiply(quat2);
+
+
+
+
+            quat1.multiply(this.options.tc_cur_usr_orient);
+            this._camera.setLens(this._fov );
+          }
+
+          this._camera.quaternion.copy(quat1);
+
+
+
+
+
+
+
 
 
 
 
         }
-
-
-
-        let quat_data_L=sens_arr[idx_L];
-        let quat_L = new THREE.Quaternion(quat_data_L[3], quat_data_L[4], quat_data_L[5], quat_data_L[2]);
-        let quat_data_H=sens_arr[idx_H];
-        let quat_H = new THREE.Quaternion(quat_data_H[3], quat_data_H[4], quat_data_H[5], quat_data_H[2]);
-
-        quat_L.normalize();
-        quat_H.normalize();
-        quat_L.slerp(quat_H,idx_ratio);
-
-        quat_L.normalize();
-
-
-        g_OBJX.quat_tmp1.slerp(quat_L,0.04);
-
-
-        if(true)
-        {
-
-          let eulerX = new THREE.Euler();
-          eulerX.setFromQuaternion(g_OBJX.quat_tmp1);
-          //quat1.multiply(g_OBJX.quat_tmp1);
-          console.log(eulerX.z);
-          m.makeRotationZ (-eulerX.z+Math.PI);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-        }
-        else {
-
-          quat1.multiply(g_OBJX.quat_tmp1);
-          m.makeRotationX ( -Math.PI);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-          m.makeRotationZ ( -Math.PI);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-          m.makeRotationY ( Math.PI/10);
-          quat2.setFromRotationMatrix(m);
-          quat1.multiply(quat2);
-
-        }
+      } else {
+        //console.log("NO Change");
       }
 
-      m.set( 0,0,1,0,
-             1,0,0,0,
-             0,1,0,0,
-             0,0,0,1, );
-      quat2.setFromRotationMatrix(m);
-      quat1.multiply(quat2);
+      var ppp = new THREE.Vector3(0, 0, 500).applyQuaternion(this._camera.quaternion)
+      this._camera.position.x = ppp.x;
+      this._camera.position.y = ppp.y;
+      this._camera.position.z = ppp.z;
 
+      /*
 
-
-      m.makeRotationY ( -Math.PI);
-      quat2.setFromRotationMatrix(m);
-      quat1.multiply(quat2);
-
-
-      if(this.options.tc_play_usr_orient)
-      {
-        let S=this.timeline_search(this.options.tc_overCapTimeLine,this._video.currentTime);
-        if(S.DH != null && S.DL != null)
-        {
-          let alpha=0.02;
-          quat2.copy(S.DL.quat);
-          quat2.slerp(S.DH.quat,S.ratio);
-          g_OBJX.quat_tmp1.slerp(quat2,alpha);
-          quat1.multiply(g_OBJX.quat_tmp1);
-          let tar_fov=(S.DH.fov-S.DL.fov)*S.ratio+S.DL.fov;
-          g_OBJX.fov_tmp1+=(tar_fov-g_OBJX.fov_tmp1)*alpha;
-          this._camera.setLens(g_OBJX.fov_tmp1);
-        }
-      }
-      else {
-        m.makeRotationY ( this._lon * Math.PI / 180);
-        this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
-        m.makeRotationX ( -this._lat * Math.PI / 180);
-        quat2.setFromRotationMatrix(m);
-        this.options.tc_cur_usr_orient.multiply(quat2);
-        quat1.multiply(this.options.tc_cur_usr_orient);
-        this._camera.setLens(this._fov );
-      }
-
-      this._camera.quaternion.copy(quat1);
-
-
-
-
-
-
-
-
-
-
-
-    }
-  } else {
-    //console.log("NO Change");
-  }
-
-  if (this._camera.useQuaternions != true) {
-    this._lat = Math.max(-85, Math.min(85, this._lat));
-    this._phi = (90 - this._lat) * Math.PI / 180;
-    this._theta = this._lon * Math.PI / 180;
-    //phi=yaw theta=pitch
-    var cx = 500 * Math.sin(this._phi) * Math.cos(this._theta);
-    var cy = 500 * Math.cos(this._phi);
-    var cz = 500 * Math.sin(this._phi) * Math.sin(this._theta);
-
-    this._camera.lookAt(new THREE.Vector3(cx, cy, cz));
-
-    // distortion
-    if (this.options.flatProjection) {
-      this._camera.position.x = 0;
-      this._camera.position.y = 0;
-      this._camera.position.z = 0;
-    } else {
-      this._camera.position.x = -cx;
-      this._camera.position.y = -cy;
-      this._camera.position.z = -cz;
-    }
-  } else {
-    var ppp = new THREE.Vector3(0, 0, 500).applyQuaternion(this._camera.quaternion)
-    this._camera.position.x = ppp.x;
-    this._camera.position.y = ppp.y;
-    this._camera.position.z = ppp.z;
-  }
-
-  /*
-
-              console.log(this._camera);
-  */
-  //console.log(this._scene);
-  this._renderer.clear();
-  this._renderer.render(this._scene, this._camera);
-},
+                  console.log(this._camera);
+      */
+      //console.log(this._scene);
+      this._renderer.clear();
+      this._renderer.render(this._scene, this._camera);
+    },
 
     // Video specific functions, exposed to controller
     play: function() {

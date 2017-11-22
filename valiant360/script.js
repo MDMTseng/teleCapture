@@ -24,29 +24,37 @@ var vm=new Vue({
           console.log(mp4_path);
         }
       }
+      if(json_path!=null)
+      {
+        UTILITY.ajax_fix_gpmf2json("GET", json_path,{
+          resolve:(data)=>{
+            /*UTILITY.fetch_txt("GET", meta_path, {
+              resolve:(data)=>{
+                let sensorData;
+                sensorData = UTILITY.parseSensorData(data);
+                playerv360[0].setSensorOrientation(sensorData);
+              }
+            });*/
+            metadata=GPMD.extractIMUData(data);
+            console.log(metadata);
 
-      UTILITY.ajax_fix_gpmf2json("GET", json_path,{
-        resolve:(data)=>{
-          /*UTILITY.fetch_txt("GET", meta_path, {
-            resolve:(data)=>{
-              let sensorData;
-              sensorData = UTILITY.parseSensorData(data);
-              playerv360[0].setSensorOrientation(sensorData);
-            }
-          });*/
-          metadata=GPMD.extractIMUData(data);
-          console.log(metadata);
+            console.log(">>>",playerv360);
+            playerv360[0].setOrientationData(metadata);
+            playerv360[0].loadVideo(mp4_path);
+            playerv360[0].play();
+          },
+          reject:(data)=>{
+            console.log(data);
+            metadata=null;
+          }
+        });
+      }
+      else {
+        playerv360[0].setOrientationData(null);
+        playerv360[0].loadVideo(mp4_path);
+        playerv360[0].play();
+      }
 
-          console.log(">>>",playerv360);
-          playerv360[0].setOrientationData(metadata);
-          playerv360[0].loadVideo(mp4_path);
-          playerv360[0].play();
-        },
-        reject:(data)=>{
-          console.log(data);
-          metadata=null;
-        }
-      });
     }
   },
 
