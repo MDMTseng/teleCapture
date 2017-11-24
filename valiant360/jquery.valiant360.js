@@ -12,7 +12,8 @@ var playerv360=[];
 offsetT_Target = -0.020;
 g_OBJX = {
   quat_tmp1:new THREE.Quaternion(0,0,0,1),
-  fov_tmp1:1
+  fov_tmp1:80,
+  cam_offset_tmp1:1
 };
 
 var Detector = {
@@ -144,10 +145,12 @@ three.js r65 or higher
       flatProjection: false,
       autoplay: true,
       tc_videoOrientation: null,
+      tc_videoFramerate: 60,
       tc_sensorOrientation: null,
       tc_curIdx: 0,
-      tc_overCapTimeLine: {timeline:[]},
+      tc_directorCut_config: {timeline:[]},
       tc_cur_usr_orient:new THREE.Quaternion(),
+      tc_cur_usr_cam_offset:1,
       tc_play_usr_orient:false
     };
 
@@ -642,15 +645,28 @@ three.js r65 or higher
               console.log("Pause");
             }
           break;
+
+          case 83://s
+            if(this.options.tc_cur_usr_cam_offset==0)
+            {
+              this.options.tc_cur_usr_cam_offset=1;
+            }
+            else
+            {
+              this.options.tc_cur_usr_cam_offset=0;
+            }
+          break;
           case 65://a
 
             let obj={
               t:this._video.currentTime,
               fov:this._fov,
-              quat:new THREE.Quaternion()
+              quat:new THREE.Quaternion(),
+              cam_offset:this.options.tc_cur_usr_cam_offset
             }
             obj.quat.copy(this.options.tc_cur_usr_orient);
             obj.t=obj.t.toFixed(3)/1;
+            obj.cam_offset=obj.cam_offset.toFixed(3)/1;
             obj.fov=obj.fov.toFixed(1)/1;
             obj.quat._x=obj.quat._x.toFixed(3)/1;
             obj.quat._y=obj.quat._y.toFixed(3)/1;
@@ -658,16 +674,12 @@ three.js r65 or higher
             obj.quat._w=obj.quat._w.toFixed(3)/1;
 
 
-            let insertP=this.timeline_search(this.options.tc_overCapTimeLine.timeline,obj.t);
+            let insertP=this.timeline_search(this.options.tc_directorCut_config.timeline,obj.t);
 
-            this.options.tc_overCapTimeLine.timeline.splice(insertP.idx_L+1, 0,obj);
+            this.options.tc_directorCut_config.timeline.splice(insertP.idx_L+1, 0,obj);
             console.log("Add 1 key frame at idx:", insertP.idx_L+1);
 
-            let str=JSON.stringify(this.options.tc_overCapTimeLine);
-            var newline = String.fromCharCode(13, 10);
-            str=str.replace(/,\{/g,'\n,{');
-            console.log(str);
-            UI_Bridge.Set_directorCut_config(str);
+            UI_Bridge.Set_directorCut_config(this.options.tc_directorCut_config);
 
           break;
           case 88://x
@@ -811,9 +823,15 @@ three.js r65 or higher
       //console.log("dsfsdf")
       this.render();
     },
-    setOrientationData: function(orientation) {
+    setOrientationData: function(orientation,frameRate=60) {
         // console.log(this);
+        if(frameRate==30)frameRate=29.97;
+        this.options.tc_videoFramerate=frameRate;
         this.options.tc_videoOrientation=orientation;
+    },
+    setDirectorCut_config: function(DirectorCut_config) {
+        // console.log(this);
+        this.options.tc_directorCut_config=DirectorCut_config;
     },
     setSensorOrientation: function(orientation) {
       this.options.tc_sensorOrientation=orientation;
@@ -837,7 +855,6 @@ three.js r65 or higher
 
       if(i == timeline_arr.length)
       {
-        console.log("aasas");
         result.DH=timeline_arr[i-1];
         result.DL=result.DH;
         result.ratio=0;
@@ -860,6 +877,7 @@ three.js r65 or higher
       return result;
     },
     render: function() {
+
       if (typeof this._video != 'undefined' && this.options.frameUpdated) {
 
                   this._camera.useQuaternions = true;
@@ -874,7 +892,8 @@ three.js r65 or higher
 
           if(this.options.tc_videoOrientation!=null)
           {
-            let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(this._video.currentTime+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
+            let rect_S=Math.round(this._video.currentTime*this.options.tc_videoFramerate)/this.options.tc_videoFramerate;
+            let SS=GPMD.GetIDX_us(this.options.tc_videoOrientation,"orientation_quat",(rect_S+offsetT_Target)*1000000+this.options.tc_videoOrientation[0].STPS[0]);
             m.makeRotationX ( -Math.PI/2);
             quat1.setFromRotationMatrix(m);
 
@@ -1002,10 +1021,10 @@ three.js r65 or higher
             quat1.multiply(quat2);
           }
 
-
+          let cam_offset=this.options.tc_cur_usr_cam_offset;
           if(this.options.tc_play_usr_orient)
           {
-            let S=this.timeline_search(this.options.tc_overCapTimeLine.timeline,this._video.currentTime);
+            let S=this.timeline_search(this.options.tc_directorCut_config.timeline,this._video.currentTime);
             if(S.DH != null && S.DL != null)
             {
               let alpha=0.02;
@@ -1019,6 +1038,10 @@ three.js r65 or higher
               quat1.multiply(g_OBJX.quat_tmp1);
               let tar_fov=(S.DH.fov-S.DL.fov)*S.ratio+S.DL.fov;
               g_OBJX.fov_tmp1+=(tar_fov-g_OBJX.fov_tmp1)*alpha;
+              let tmp_cam_offset=(S.DH.cam_offset-S.DL.cam_offset)*S.ratio+S.DL.cam_offset;
+              g_OBJX.cam_offset_tmp1+=(tmp_cam_offset-g_OBJX.cam_offset_tmp1)*alpha;
+              cam_offset=g_OBJX.cam_offset_tmp1;
+              this._video.volume=1-g_OBJX.cam_offset_tmp1*0.8;//Volume hack
               this._camera.setLens(g_OBJX.fov_tmp1);
             }
           }
@@ -1046,6 +1069,11 @@ three.js r65 or higher
 
 
 
+          var ppp = new THREE.Vector3(0, 0, cam_offset*500).applyQuaternion(this._camera.quaternion)
+          this._camera.position.x = ppp.x;
+          this._camera.position.y = ppp.y;
+          this._camera.position.z = ppp.z;
+
 
 
 
@@ -1058,11 +1086,6 @@ three.js r65 or higher
       } else {
         //console.log("NO Change");
       }
-
-      var ppp = new THREE.Vector3(0, 0, 500).applyQuaternion(this._camera.quaternion)
-      this._camera.position.x = ppp.x;
-      this._camera.position.y = ppp.y;
-      this._camera.position.z = ppp.z;
 
       /*
 

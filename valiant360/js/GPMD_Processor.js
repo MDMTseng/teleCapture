@@ -630,6 +630,7 @@ let GPMD={
     let ACCL_data = [];
     let MAGN_data = [];
     let CALB_data ={};
+    let frameRate=0;
     gpmf_metadata.DEVCs.forEach((DEVC)=>{
       if(DEVC.DVID=="IMUC")
       {
@@ -642,6 +643,8 @@ let GPMD={
           GYRO_data.push(STRM);
         else if(typeof( STRM.ACCL) != 'undefined')
           ACCL_data.push(STRM);
+        else if(frameRate==0 && typeof( STRM.ISOG) != 'undefined')
+          frameRate=STRM.TSMP-1;
         else if(typeof( STRM.MAGN) != 'undefined')
           MAGN_data.push(STRM);
         else if(typeof( STRM.GPS5) != 'undefined'){
@@ -650,12 +653,11 @@ let GPMD={
         }
       });
     });
-    // console.log(GPS_data);
     let DrawG=true;
     GPMD.ProcessCALB(CALB_data);
     let ifLockGeoRef=false;
     GPMD.FuseGYRO_ACCL_MAGN(GYRO_data,ACCL_data,MAGN_data,CALB_data,ifLockGeoRef,DrawG);
-    return GYRO_data;
+    return {frameRate:frameRate,IMU_DATA:GYRO_data};
   }
 
 }
