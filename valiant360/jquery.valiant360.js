@@ -148,10 +148,10 @@ three.js r65 or higher
       tc_videoFramerate: 60,
       tc_sensorOrientation: null,
       tc_curIdx: 0,
-      tc_directorCut_config: {timeline:[]},
+      tc_directorCut_config: {horizon_adjust:[],timeline:[]},
       tc_cur_usr_orient:new THREE.Quaternion(),
       tc_cur_usr_cam_offset:1,
-      tc_play_usr_orient:false
+      tc_usr_mode:0
     };
 
   // The actual plugin constructor
@@ -658,38 +658,62 @@ three.js r65 or higher
           break;
           case 65://a
 
-            let obj={
-              t:this._video.currentTime,
-              fov:this._fov,
-              quat:new THREE.Quaternion(),
-              cam_offset:this.options.tc_cur_usr_cam_offset
+            let tmp_quat=new THREE.Quaternion();
+            tmp_quat.copy(this.options.tc_cur_usr_orient);
+            tmp_quat._x=tmp_quat._x.toFixed(3)/1;
+            tmp_quat._y=tmp_quat._y.toFixed(3)/1;
+            tmp_quat._z=tmp_quat._z.toFixed(3)/1;
+            tmp_quat._w=tmp_quat._w.toFixed(3)/1;
+
+            let tmp_t=this._video.currentTime;
+            tmp_t=tmp_t.toFixed(3)/1;
+
+
+
+            if(this.options.tc_usr_mode==0)
+            {
+              let obj={
+                t:tmp_t,
+                fov:this._fov,
+                quat:tmp_quat,
+                cam_offset:this.options.tc_cur_usr_cam_offset
+              }
+              obj.cam_offset=obj.cam_offset.toFixed(3)/1;
+              obj.fov=obj.fov.toFixed(1)/1;
+
+              let insertP=this.timeline_search(this.options.tc_directorCut_config.timeline,obj.t);
+              this.options.tc_directorCut_config.timeline.splice(insertP.idx_L+1, 0,obj);
+              UI_Bridge.Set_directorCut_config(this.options.tc_directorCut_config);
             }
-            obj.quat.copy(this.options.tc_cur_usr_orient);
-            obj.t=obj.t.toFixed(3)/1;
-            obj.cam_offset=obj.cam_offset.toFixed(3)/1;
-            obj.fov=obj.fov.toFixed(1)/1;
-            obj.quat._x=obj.quat._x.toFixed(3)/1;
-            obj.quat._y=obj.quat._y.toFixed(3)/1;
-            obj.quat._z=obj.quat._z.toFixed(3)/1;
-            obj.quat._w=obj.quat._w.toFixed(3)/1;
-
-
-            let insertP=this.timeline_search(this.options.tc_directorCut_config.timeline,obj.t);
-
-            this.options.tc_directorCut_config.timeline.splice(insertP.idx_L+1, 0,obj);
-            console.log("Add 1 key frame at idx:", insertP.idx_L+1);
-
-            UI_Bridge.Set_directorCut_config(this.options.tc_directorCut_config);
+            else if(this.options.tc_usr_mode==2){
+              let obj={
+                t:tmp_t,
+                quat:tmp_quat,
+              }
+              let insertP=this.timeline_search(this.options.tc_directorCut_config.horizon_adjust,obj.t);
+              this.options.tc_directorCut_config.horizon_adjust.splice(insertP.idx_L+1, 0,obj);
+              UI_Bridge.Set_directorCut_config(this.options.tc_directorCut_config);
+            }
 
           break;
           case 88://x
-            this.options.tc_play_usr_orient=!this.options.tc_play_usr_orient;
-            if(this.options.tc_play_usr_orient)
+            this.options.tc_usr_mode=(this.options.tc_usr_mode+1)%3;
+            if(this.options.tc_usr_mode==0)
             {
-              console.log("Play reframe mode");
+
+                console.log("Edit mode mode");
+            }
+            else if(this.options.tc_usr_mode==1) {
+
+                console.log("Play reframe mode");
+            }
+            else if(this.options.tc_usr_mode==2) {
+
+                console.log("drift comp mode");
             }
             else {
-              console.log("Edit mode mode");
+              //???
+              this.options.tc_usr_mode=0;
             }
           break;
         }
@@ -1022,7 +1046,24 @@ three.js r65 or higher
           }
 
           let cam_offset=this.options.tc_cur_usr_cam_offset;
-          if(this.options.tc_play_usr_orient)
+
+          if(this.options.tc_usr_mode!=2)
+          {
+            let S=this.timeline_search(this.options.tc_directorCut_config.horizon_adjust,this._video.currentTime);
+            if(S.DH != null && S.DL != null)
+            {
+              let alpha=0.02;
+              quat2.copy(S.DL.quat);
+              quat2.slerp(S.DH.quat,S.ratio);
+              quat2.normalize();
+              //g_OBJX.quat_tmp1.slerp(quat2,alpha);
+              quat1.multiply(quat2);
+            }
+          }
+
+
+
+          if(this.options.tc_usr_mode==1)
           {
             let S=this.timeline_search(this.options.tc_directorCut_config.timeline,this._video.currentTime);
             if(S.DH != null && S.DL != null)
@@ -1041,11 +1082,25 @@ three.js r65 or higher
               let tmp_cam_offset=(S.DH.cam_offset-S.DL.cam_offset)*S.ratio+S.DL.cam_offset;
               g_OBJX.cam_offset_tmp1+=(tmp_cam_offset-g_OBJX.cam_offset_tmp1)*alpha;
               cam_offset=g_OBJX.cam_offset_tmp1;
-              this._video.volume=1-g_OBJX.cam_offset_tmp1*0.8;//Volume hack
               this._camera.setLens(g_OBJX.fov_tmp1);
             }
           }
-          else {
+
+
+
+
+          if(this.options.tc_usr_mode==2){
+            m.makeRotationZ ( this._lon * Math.PI / 180);
+            this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
+
+            m.makeRotationX ( -this._lat * Math.PI / 180);
+            quat2.setFromRotationMatrix(m);
+            this.options.tc_cur_usr_orient.multiply(quat2);
+
+            quat1.multiply(this.options.tc_cur_usr_orient);
+            this._camera.setLens(this._fov );
+          }
+          else if(this.options.tc_usr_mode==0){
             m.makeRotationZ ( this._roll * Math.PI / 180);
             this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
 

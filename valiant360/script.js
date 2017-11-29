@@ -59,7 +59,7 @@ var vm=new Vue({
       else {
         playerv360[0].setOrientationData(null);
         playerv360[0].loadVideo(mp4_path);
-        playerv360[0].setDirectorCut_config({});
+        //playerv360[0].setDirectorCut_config({});
         playerv360[0].play();
       }
 
