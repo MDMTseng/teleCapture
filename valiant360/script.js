@@ -18,28 +18,31 @@ var vm=new Vue({
         }
         else if (files[i].name.match(/META/i) != null) {
           var meta_path = URL.createObjectURL(files[i]);
-          console.log(meta_path);
+          console.log(files[i].name);
         }
         else if (files[i].name.match(/GPDC/i) != null) {
           var directorCut_path = URL.createObjectURL(files[i]);
-          console.log(directorCut_path);
+          console.log(files[i].name);
         }
         else {
           var fileURL = URL.createObjectURL(files[i])
           var mp4_path = fileURL;
-          console.log(mp4_path);
+          console.log(files[i].name);
         }
       }
+
+
+      if(directorCut_path!=null)
+      UTILITY.ajax("GET", directorCut_path, {
+        resolve:(data)=>{
+          playerv360[0].setDirectorCut_config(data);
+          UI_Bridge.Set_directorCut_config(data);
+        }
+      });
       if(json_path!=null)
       {
         UTILITY.ajax_fix_gpmf2json("GET", json_path,{
           resolve:(data)=>{
-            UTILITY.ajax("GET", directorCut_path, {
-              resolve:(data)=>{
-
-                playerv360[0].setDirectorCut_config(data);
-              }
-            });
 
             console.log(data);
             let MetaPack=GPMD.extractIMUData(data);
@@ -57,6 +60,7 @@ var vm=new Vue({
         });
       }
       else {
+
         playerv360[0].setOrientationData(null);
         playerv360[0].loadVideo(mp4_path);
         //playerv360[0].setDirectorCut_config({});
