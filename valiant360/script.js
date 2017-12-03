@@ -15,6 +15,22 @@ var vm=new Vue({
         if (files[i].name.match(/GPFR/i) != null) {
           var json_path = URL.createObjectURL(files[i]);
           console.log(json_path);
+          UTILITY.ajax_fix_gpmf2json("GET", json_path,{
+            resolve:(data)=>{
+
+              console.log(data);
+              let MetaPack=GPMD.extractIMUData(data);
+              console.log(MetaPack);
+
+              console.log(">>>",playerv360);
+              playerv360[0].setOrientationData(MetaPack.IMU_DATA,MetaPack.frameRate);
+
+            },
+            reject:(data)=>{
+              console.log(data);
+              metadata=null;
+            }
+          });
         }
         else if (files[i].name.match(/META/i) != null) {
           var meta_path = URL.createObjectURL(files[i]);
@@ -22,50 +38,24 @@ var vm=new Vue({
         }
         else if (files[i].name.match(/GPDC/i) != null) {
           var directorCut_path = URL.createObjectURL(files[i]);
+          UTILITY.ajax("GET", directorCut_path, {
+            resolve:(data)=>{
+              playerv360[0].setDirectorCut_config(data);
+              UI_Bridge.Set_directorCut_config(data);
+            }
+          });
           console.log(files[i].name);
         }
         else {
           var fileURL = URL.createObjectURL(files[i])
           var mp4_path = fileURL;
           console.log(files[i].name);
+          playerv360[0].loadVideo(mp4_path);
+          playerv360[0].play();
         }
       }
 
 
-      if(directorCut_path!=null)
-      UTILITY.ajax("GET", directorCut_path, {
-        resolve:(data)=>{
-          playerv360[0].setDirectorCut_config(data);
-          UI_Bridge.Set_directorCut_config(data);
-        }
-      });
-      if(json_path!=null)
-      {
-        UTILITY.ajax_fix_gpmf2json("GET", json_path,{
-          resolve:(data)=>{
-
-            console.log(data);
-            let MetaPack=GPMD.extractIMUData(data);
-            console.log(MetaPack);
-
-            console.log(">>>",playerv360);
-            playerv360[0].setOrientationData(MetaPack.IMU_DATA,MetaPack.frameRate);
-            playerv360[0].loadVideo(mp4_path);
-            playerv360[0].play();
-          },
-          reject:(data)=>{
-            console.log(data);
-            metadata=null;
-          }
-        });
-      }
-      else {
-
-        playerv360[0].setOrientationData(null);
-        playerv360[0].loadVideo(mp4_path);
-        //playerv360[0].setDirectorCut_config({});
-        playerv360[0].play();
-      }
 
     }
   },
