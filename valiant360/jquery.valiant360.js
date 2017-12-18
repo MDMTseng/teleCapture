@@ -1068,7 +1068,7 @@ three.js r65 or higher
             let S=this.timeline_search(this.options.tc_directorCut_config.timeline,this._video.currentTime);
             if(S.DH != null && S.DL != null)
             {
-              let alpha=0.02;
+              let alpha=0.06;
               quat2.copy(S.DL.quat);
               quat2.slerp(S.DH.quat,S.ratio);
               quat2.normalize();
@@ -1101,19 +1101,17 @@ three.js r65 or higher
             this._camera.setLens(this._fov );
           }
           else if(this.options.tc_usr_mode==0){
-            m.makeRotationZ ( this._roll * Math.PI / 180);
-            this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
-
 
             m.makeRotationY ( this._lon * Math.PI / 180);
-            quat2.setFromRotationMatrix(m);
-            this.options.tc_cur_usr_orient.multiply(quat2);
+            this.options.tc_cur_usr_orient.setFromRotationMatrix(m);
 
             m.makeRotationX ( -this._lat * Math.PI / 180);
             quat2.setFromRotationMatrix(m);
             this.options.tc_cur_usr_orient.multiply(quat2);
 
-
+            m.makeRotationZ ( -this._roll * Math.PI / 180);
+            quat2.setFromRotationMatrix(m);
+            this.options.tc_cur_usr_orient.multiply(quat2);
 
 
             quat1.multiply(this.options.tc_cur_usr_orient);
