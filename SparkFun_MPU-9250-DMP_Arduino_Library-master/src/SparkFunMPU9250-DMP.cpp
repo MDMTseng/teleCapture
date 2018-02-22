@@ -628,12 +628,9 @@ float MPU9250_DMP::calcQuat(long axis)
 
 float MPU9250_DMP::qToFloat(long number, unsigned char q)
 {
-	unsigned long mask;
-	for (int i=0; i<q; i++)
-	{
-		mask |= (1<<i);
-	}
-	return (number >> q) + ((number & mask) / (float) (2<<(q-1)));
+	uint32_t mask;
+	mask = ((uint32_t)1 << q) - 1;
+	return (number >> q) + ((number & mask) / (float) ((uint32_t)2<<(q-1)));
 }
 
 void MPU9250_DMP::computeEulerAngles(bool degrees)
